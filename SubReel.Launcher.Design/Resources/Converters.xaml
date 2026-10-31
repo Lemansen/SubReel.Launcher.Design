@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:conv="clr-namespace:SubReel.Launcher.Design.Converters">
+ <conv:InverseBoolConverter x:Key="InvBool"/>
+ <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+ <conv:BoolToVisibilityConverter x:Key="InvBoolToVis" Invert="True"/>
+ <conv:NullToVisibilityConverter x:Key="NotNullToVis"/>
+ <conv:NullToVisibilityConverter x:Key="NullToVis" Invert="True"/>
+ <conv:EnumToVisibilityConverter x:Key="EnumToVis"/>
+ <conv:BoolToStringConverter x:Key="ActiveTag" TrueValue="active" FalseValue="{x:Null}"/>
+ <conv:BoolToStringConverter x:Key="SelectedTag" TrueValue="selected" FalseValue="{x:Null}"/>
+ <conv:BoolToStringConverter x:Key="ErrorTag" TrueValue="error" FalseValue="{x:Null}"/>
+ <conv:EnumToTagConverter x:Key="EnumToTag"/>
+ <conv:ImageToBrushConverter x:Key="ImageToBrush"/>
+</ResourceDictionary>

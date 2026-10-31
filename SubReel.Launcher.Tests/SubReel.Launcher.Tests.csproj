@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SubReel.Launcher.Domain\SubReel.Launcher.Domain.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Application\SubReel.Launcher.Application.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Infrastructure\SubReel.Launcher.Infrastructure.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Minecraft\SubReel.Launcher.Minecraft.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Authentication\SubReel.Launcher.Authentication.csproj" />
+  </ItemGroup>
+</Project>

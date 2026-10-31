@@ -1,0 +1,64 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="clr-namespace:SubReel.Launcher.Design.ViewModels"
+ xmlns:ctl="clr-namespace:SubReel.Launcher.Design.Views.Controls">
+ <!-- Вкладка категории -->
+ <DataTemplate x:Key="NewsTabTemplate">
+  <Button Style="{StaticResource ChipButtonPurple}" Command="{Binding Command}" Content="{Binding Title}" FontSize="12.5" Padding="14,7" Margin="0,0,8,0"/>
+ </DataTemplate>
+
+ <!-- Чип категории поверх картинки -->
+ <DataTemplate x:Key="NewsCategoryChipTemplate">
+  <Border CornerRadius="10" Padding="9,3" HorizontalAlignment="Left" Background="#C00C0C0F" BorderBrush="{Binding CategoryBorderBrush}" BorderThickness="1">
+   <TextBlock Text="{Binding CategoryName}" FontSize="9.5" FontWeight="Bold" Foreground="{Binding CategoryBrush}" TextTrimming="CharacterEllipsis"/>
+  </Border>
+ </DataTemplate>
+
+ <!-- Главная новость -->
+ <DataTemplate x:Key="NewsFeaturedTemplate">
+  <Button Style="{StaticResource NewsCard}" Command="{Binding OpenCommand}" Height="270" Margin="0,0,0,20">
+   <Grid>
+    <Border CornerRadius="19" Background="{Binding FeaturedPlaceholder, Converter={StaticResource ImageToBrush}}"/>
+    <ctl:PhotoBorder CornerRadius="19" Source="{Binding Photo}"/>
+    <Border CornerRadius="19" IsHitTestVisible="False">
+     <Border.Background>
+      <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+       <GradientStop Color="#100C0C0F" Offset="0"/>
+       <GradientStop Color="#550C0C0F" Offset="0.45"/>
+       <GradientStop Color="#F00C0C0F" Offset="1"/>
+      </LinearGradientBrush>
+     </Border.Background>
+    </Border>
+    <StackPanel VerticalAlignment="Bottom" Margin="28,0,28,24" MaxWidth="640" HorizontalAlignment="Left">
+     <ContentControl Content="{Binding}" ContentTemplate="{StaticResource NewsCategoryChipTemplate}" Focusable="False"/>
+     <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="Black" Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="78" Margin="0,10,0,0"/>
+     <TextBlock Text="{Binding Summary}" FontSize="13.5" Foreground="{StaticResource TextMain}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="40" Margin="0,8,0,0"
+                Visibility="{Binding HasSummary, Converter={StaticResource BoolToVis}}"/>
+     <TextBlock Text="{Binding DateText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}" Margin="0,8,0,0"
+                Visibility="{Binding HasDate, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
+   </Grid>
+  </Button>
+ </DataTemplate>
+
+ <!-- Маленькая карточка новости -->
+ <DataTemplate x:Key="NewsSmallTemplate">
+  <Button Style="{StaticResource NewsCard}" Command="{Binding OpenCommand}" Width="292" Height="254" Margin="0,0,14,14">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="128"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Grid>
+     <Border CornerRadius="19,19,0,0" Background="{Binding CardPlaceholder, Converter={StaticResource ImageToBrush}}"/>
+     <ctl:PhotoBorder CornerRadius="19,19,0,0" Source="{Binding Photo}"/>
+     <ContentControl Content="{Binding}" ContentTemplate="{StaticResource NewsCategoryChipTemplate}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10" Focusable="False"/>
+    </Grid>
+    <Grid Grid.Row="1" Margin="16,12">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="Bold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="40"/>
+     <TextBlock Grid.Row="1" Text="{Binding Summary}" FontSize="12" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" Margin="0,5,0,0"
+                Visibility="{Binding HasSummary, Converter={StaticResource BoolToVis}}"/>
+     <TextBlock Grid.Row="2" Text="{Binding DateText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#78C8FF" Visibility="{Binding HasDate, Converter={StaticResource BoolToVis}}"/>
+    </Grid>
+   </Grid>
+  </Button>
+ </DataTemplate>
+</ResourceDictionary>
