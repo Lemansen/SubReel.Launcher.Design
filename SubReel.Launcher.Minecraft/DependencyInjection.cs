@@ -4,6 +4,7 @@ using SubReel.Launcher.Application.Games;
 using SubReel.Launcher.Application.Instances;
 using SubReel.Launcher.Application.Java;
 using SubReel.Launcher.Application.Loaders;
+using SubReel.Launcher.Application.Modpacks;
 using SubReel.Launcher.Minecraft.Downloads;
 using SubReel.Launcher.Minecraft.Installation;
 using SubReel.Launcher.Minecraft.Instances;
@@ -11,6 +12,7 @@ using SubReel.Launcher.Minecraft.Java;
 using SubReel.Launcher.Minecraft.Launching;
 using SubReel.Launcher.Minecraft.Layout;
 using SubReel.Launcher.Minecraft.Loaders;
+using SubReel.Launcher.Minecraft.Modpacks;
 using SubReel.Launcher.Minecraft.Versions;
 
 namespace SubReel.Launcher.Minecraft;
@@ -55,6 +57,9 @@ public static class MinecraftServiceCollectionExtensions
         services.AddSingleton(LoaderEndpoints.Default);
         services.AddSingleton<ILoaderCatalog, LoaderCatalog>();
         services.AddSingleton<ILoaderInstaller, LoaderInstaller>();
+
+        // Сборки (фаза 11): импорт .mrpack.
+        services.AddSingleton<IModpackImporter, MrpackImporter>();
 
         // Java Manager: источники папок Java (каждый добавляет своих кандидатов), чтение версии, рантаймы Mojang.
         services.AddSingleton<IJavaHomeSource, JavaHomeEnvironmentSource>();

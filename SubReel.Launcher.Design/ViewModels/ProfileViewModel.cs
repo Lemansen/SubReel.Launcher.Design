@@ -139,6 +139,14 @@ public sealed class ProfileViewModel : ObservableObject
         _nav.CloseProfileMenu();
     }
 
+    /// <summary>Добавляет офлайн-аккаунт и делает его активным (окно «Добавить аккаунт»). false — ник не подходит или такой аккаунт уже есть.</summary>
+    public bool TryAddOffline(string name)
+    {
+        if (!_service.AddAndActivate(name.Trim())) return false;
+        RebuildAccounts();
+        return true;
+    }
+
     /// <summary>Перечитывает список аккаунтов из настроек (после входа через Microsoft аккаунт добавлен и активен).</summary>
     public void Reload() => RebuildAccounts();
 

@@ -24,7 +24,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel(
         NavigationService nav, VersionStore store, ProfileViewModel profile, HomeViewModel home, LaunchViewModel launch,
-        VersionsViewModel versions, VersionDropdownViewModel versionDropdown, NewsViewModel news, HubViewModel hub,
+        VersionsViewModel versions, VersionDropdownViewModel versionDropdown, NewsViewModel news, BuildsViewModel builds, HubViewModel hub,
         ToastViewModel toast, IImageService images, IOverlayFactory overlays, INetworkMonitor network, ILogger<MainViewModel> logger)
     {
         _network = network;
@@ -37,6 +37,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Versions = versions;
         VersionDropdown = versionDropdown;
         News = news;
+        Builds = builds;
         Hub = hub;
         Toast = toast;
         _images = images;
@@ -58,9 +59,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         CloseProfileMenuCommand = new RelayCommand(nav.CloseProfileMenu);
         CloseVersionDropdownCommand = new RelayCommand(nav.CloseVersionDropdown);
         OpenAccountCommand = new RelayCommand(OpenAccount);
+        OpenAddAccountCommand = new RelayCommand(OpenAddAccount);
         SignInMicrosoftCommand = new RelayCommand(SignInMicrosoft);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
-        OpenModpackCommand = new RelayCommand(() => nav.ShowOverlay(overlays.CreateModpack()));
+        OpenBuildsCommand = new RelayCommand(() => nav.OpenBuilds());
         CloseOverlayCommand = new RelayCommand(nav.CloseOverlay);
     }
 
@@ -71,6 +73,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public VersionsViewModel Versions { get; }
     public VersionDropdownViewModel VersionDropdown { get; }
     public NewsViewModel News { get; }
+    public BuildsViewModel Builds { get; }
     public HubViewModel Hub { get; }
     public ToastViewModel Toast { get; }
 
@@ -85,15 +88,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand CloseProfileMenuCommand { get; }
     public ICommand CloseVersionDropdownCommand { get; }
     public ICommand OpenAccountCommand { get; }
+    public ICommand OpenAddAccountCommand { get; }
     public ICommand SignInMicrosoftCommand { get; }
     public ICommand OpenSettingsCommand { get; }
-    public ICommand OpenModpackCommand { get; }
+    public ICommand OpenBuildsCommand { get; }
     public ICommand CloseOverlayCommand { get; }
 
     private void OpenAccount()
     {
         Nav.CloseProfileMenu();
         Nav.ShowOverlay(_overlays.CreateAccount());
+    }
+
+    private void OpenAddAccount()
+    {
+        Nav.CloseProfileMenu();
+        Nav.ShowOverlay(_overlays.CreateAddAccount());
     }
 
     private void SignInMicrosoft()
@@ -217,6 +227,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (News.IsDetailOpen) News.IsDetailOpen = false; else News.Close();
             return true;
         }
+        if (Nav.IsBuildsOpen) { Builds.GoBack(); return true; }
         if (Nav.IsVersionDropdownOpen) { Nav.CloseVersionDropdown(); return true; }
         if (Nav.IsProfileMenuOpen) { Nav.CloseProfileMenu(); return true; }
         if (Nav.IsVersionsOpen && !Nav.IsOverlayOpen) { Nav.ExitVersions(); return true; }

@@ -27,4 +27,97 @@
    </Trigger>
   </Style.Triggers>
  </Style>
+
+ <!-- Сегментированный переключатель (загрузчик): все варианты в одной тёмной полосе, выбранный — светлая плитка -->
+ <Style x:Key="SegmentItem" TargetType="ListBoxItem">
+  <Setter Property="Cursor" Value="Hand"/>
+  <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+  <Setter Property="HorizontalContentAlignment" Value="Center"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="ListBoxItem">
+     <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="10" Padding="8,8" Margin="2">
+      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#0FFFFFFF"/></Trigger>
+      <Trigger Property="IsSelected" Value="True">
+       <Setter TargetName="Bd" Property="Background" Value="#26FFFFFF"/>
+       <Setter TargetName="Bd" Property="BorderBrush" Value="#33FFFFFF"/>
+      </Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+ <Style x:Key="SegmentList" TargetType="ListBox">
+  <Setter Property="Background" Value="#101015"/>
+  <Setter Property="BorderBrush" Value="#18FFFFFF"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Padding" Value="2"/>
+  <Setter Property="ItemContainerStyle" Value="{StaticResource SegmentItem}"/>
+  <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+  <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+  <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></Setter.Value></Setter>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="ListBox">
+     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="14" Padding="{TemplateBinding Padding}">
+      <ItemsPresenter/>
+     </Border>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+
+ <!-- Главная кнопка действия: светлая плитка с тёмным текстом -->
+ <Style x:Key="PrimaryButton" TargetType="Button">
+  <Setter Property="Foreground" Value="#0B0B10"/>
+  <Setter Property="FontSize" Value="14"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Padding" Value="26,12"/>
+  <Setter Property="Cursor" Value="Hand"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="Button">
+     <Border x:Name="Bd" Background="#F4F4F5" CornerRadius="14" Padding="{TemplateBinding Padding}">
+      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#FFFFFF"/></Trigger>
+      <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.85"/></Trigger>
+      <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Bd" Property="Opacity" Value="0.5"/></Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+
+ <!-- Вкладка с подчёркиванием; активная помечается Tag="active" (конвертер ActiveTag) -->
+ <Style x:Key="TabButton" TargetType="Button">
+  <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+  <Setter Property="Background" Value="Transparent"/>
+  <Setter Property="FontSize" Value="14"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Padding" Value="2,8"/>
+  <Setter Property="Margin" Value="0,0,24,0"/>
+  <Setter Property="Cursor" Value="Hand"/>
+  <Setter Property="Focusable" Value="False"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="Button">
+     <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="{TemplateBinding Padding}">
+      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource TextMain}"/></Trigger>
+      <Trigger Property="Tag" Value="active">
+       <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+       <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+      </Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
 </ResourceDictionary>

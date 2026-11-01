@@ -15,6 +15,9 @@ public interface IDialogService
     /// <summary>Путь к выбранной картинке или null, если диалог закрыли.</summary>
     string? PickImageFile();
 
+    /// <summary>Путь к выбранному файлу сборки Modrinth (.mrpack) или null, если диалог закрыли.</summary>
+    string? PickModpackFile();
+
     /// <summary>Путь к выбранной папке или null, если диалог закрыли.</summary>
     string? PickFolder(string title, string? initialDirectory = null);
 }

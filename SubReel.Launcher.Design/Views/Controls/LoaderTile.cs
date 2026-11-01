@@ -32,6 +32,19 @@ public sealed class LoaderTile : Border
         var color = LoaderAccent.ColorFor(Kind);
         var brush = new SolidColorBrush(color);
 
+        var logo = LogoCatalog.Find(LogoCatalog.NameFor(Kind));
+        if (logo is not null)
+        {
+            // Есть логотип загрузчика (Assets/Logos): рисуем его без плашки.
+            Width = size;
+            Height = size;
+            CornerRadius = new CornerRadius(0);
+            Background = null;
+            BorderBrush = null;
+            Child = new Image { Source = logo, Stretch = Stretch.Uniform, Margin = new Thickness(size * 0.06), SnapsToDevicePixels = true };
+            return;
+        }
+
         UIElement glyph;
         if (Kind == LoaderKind.Vanilla)
         {

@@ -7,9 +7,9 @@ namespace SubReel.Launcher.Design.ViewModels;
 public interface IOverlayFactory
 {
     OverlayViewModel CreateAccount();
+    OverlayViewModel CreateAddAccount();
     OverlayViewModel CreateMicrosoftSignIn();
     OverlayViewModel CreateSettings();
-    OverlayViewModel CreateModpack();
 }
 
 public sealed class OverlayFactory : IOverlayFactory
@@ -40,9 +40,9 @@ public sealed class OverlayFactory : IOverlayFactory
         _dataLocation = dataLocation;
     }
 
-    public OverlayViewModel CreateAccount() => new AccountOverlayViewModel(_profile, _nav, _dialogs, _avatars, _sessions, _toast);
+    public OverlayViewModel CreateAccount() => new AccountOverlayViewModel(_profile, _nav, _dialogs, _avatars, _sessions, _toast, CreateAddAccount);
+    public OverlayViewModel CreateAddAccount() => new AddAccountOverlayViewModel(_profile, _nav, CreateMicrosoftSignIn, CreateAccount);
     public OverlayViewModel CreateMicrosoftSignIn() =>
         new MicrosoftSignInOverlayViewModel(_sessions, _profile, _nav, _browser, _clipboard, _toast, _loggers.CreateLogger<MicrosoftSignInOverlayViewModel>());
     public OverlayViewModel CreateSettings() => new SettingsOverlayViewModel(_dataLocation, _dialogs, _toast);
-    public OverlayViewModel CreateModpack() => new ModpackOverlayViewModel(_nav);
 }

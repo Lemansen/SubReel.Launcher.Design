@@ -49,6 +49,18 @@ public sealed class DialogService : IDialogService
         return accepted == true ? dialog.FileName : null;
     }
 
+    public string? PickModpackFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Выбери файл сборки",
+            Filter = "Сборки Modrinth (*.mrpack)|*.mrpack|Все файлы|*.*",
+        };
+        var owner = System.Windows.Application.Current?.MainWindow;
+        var accepted = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+        return accepted == true ? dialog.FileName : null;
+    }
+
     public string? PickFolder(string title, string? initialDirectory = null)
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog { Title = title };

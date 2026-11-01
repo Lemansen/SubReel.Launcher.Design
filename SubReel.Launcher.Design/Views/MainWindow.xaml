@@ -301,7 +301,7 @@
 
      <!-- .bottom-left -->
      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-      <Button Style="{StaticResource FooterButtonAccent}" Command="{Binding OpenModpackCommand}">
+      <Button Style="{StaticResource FooterButtonAccent}" Command="{Binding OpenBuildsCommand}">
        <StackPanel Orientation="Horizontal">
         <Viewbox Width="16" Height="16" Margin="0,0,8,0"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconLayers}"/></Canvas></Viewbox>
         <TextBlock Text="Создать сборку" VerticalAlignment="Center"/>
@@ -373,7 +373,7 @@
      <Border Height="1" Background="#12FFFFFF" Margin="4,0,4,8"/>
      <TextBlock Text="АККАУНТЫ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="10,0,0,6"/>
      <ItemsControl ItemsSource="{Binding Profile.Accounts}" Focusable="False"/>
-     <Button Style="{StaticResource MenuItemButton}" Command="{Binding Profile.ToggleAddAccountCommand}" Margin="0,2,0,0">
+     <Button Style="{StaticResource MenuItemButton}" Command="{Binding OpenAddAccountCommand}" Margin="0,2,0,0">
       <StackPanel Orientation="Horizontal">
        <Border Width="32" Height="32" CornerRadius="16" BorderBrush="#33FFFFFF" BorderThickness="1">
         <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="{StaticResource IconPlus}"/></Canvas></Viewbox>
@@ -598,6 +598,27 @@
    </Grid>
   </Grid>
 
+  <!-- ===== Создать сборку: полноэкранный раздел как «Новости»; шапка и подвал уезжают ===== -->
+  <Grid x:Name="BuildsPanel" DataContext="{Binding Builds}" Margin="24" Visibility="Collapsed" Opacity="0" Panel.ZIndex="7">
+   <Grid.RenderTransform><TranslateTransform Y="40"/></Grid.RenderTransform>
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+   <DockPanel Margin="8,6,8,18" Background="Transparent" PreviewMouseLeftButtonDown="Header_DragWindow">
+    <Button DockPanel.Dock="Right" Style="{StaticResource NavButton}" VerticalAlignment="Center" Command="{Binding BackCommand}">
+     <StackPanel Orientation="Horizontal">
+      <Viewbox Width="16" Height="16" Margin="0,0,8,0"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconChevronUp}"/></Canvas></Viewbox>
+      <TextBlock Text="Назад" VerticalAlignment="Center"/>
+     </StackPanel>
+    </Button>
+    <StackPanel VerticalAlignment="Center">
+     <TextBlock Text="Создать сборку" FontSize="28" FontWeight="Black"/>
+     <TextBlock Text="{Binding Subtitle}" Margin="0,2,0,0" FontSize="13.6" Foreground="{StaticResource TextMuted}"/>
+    </StackPanel>
+   </DockPanel>
+   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+    <ContentControl Content="{Binding}" Margin="8,0,8,24" Focusable="False" IsTabStop="False"/>
+   </ScrollViewer>
+  </Grid>
+
   <!-- ===== Новости: шапка и подвал уезжают; главная новость, карточки, категории, состояния загрузки / ошибки / пусто ===== -->
   <Grid x:Name="NewsPanel" DataContext="{Binding News}" Margin="24" Visibility="Collapsed" Opacity="0" Panel.ZIndex="7">
    <Grid.RenderTransform><TranslateTransform Y="40"/></Grid.RenderTransform>
@@ -726,13 +747,13 @@
        Что внутри, решает тип Nav.Overlay: для каждого — свой DataTemplate (Views/Templates/OverlayTemplates.xaml). -->
   <Grid x:Name="OverlayPanel" Margin="24" Visibility="Collapsed" Panel.ZIndex="10" Opacity="0">
    <Border Background="#E60C0C0F" CornerRadius="24"/>
-   <Border x:Name="OverlayCard" Width="680" MaxHeight="520" Padding="28" Background="#141419" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
+   <Border x:Name="OverlayCard" Width="{Binding Nav.Overlay.CardWidth, FallbackValue=680, TargetNullValue=680}" MaxHeight="{Binding Nav.Overlay.CardMaxHeight, FallbackValue=520, TargetNullValue=520}" Padding="28" Background="#141419" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" RenderTransformOrigin="0.5,0.5">
     <Border.RenderTransform><ScaleTransform ScaleX="0.96" ScaleY="0.96"/></Border.RenderTransform>
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
      <DockPanel>
       <TextBlock Text="{Binding Nav.Overlay.Title}" FontSize="23" FontWeight="Bold" VerticalAlignment="Center"/>
-      <Button Content="×" DockPanel.Dock="Right" Style="{StaticResource NavButton}" FontSize="22" Command="{Binding CloseOverlayCommand}"/>
+      <Button DockPanel.Dock="Right" Style="{StaticResource CloseButton}" ToolTip="Закрыть" Command="{Binding CloseOverlayCommand}"/>
      </DockPanel>
      <ScrollViewer Grid.Row="1" Margin="0,25,0,20" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <ContentControl Content="{Binding Nav.Overlay}" Focusable="False" IsTabStop="False"/>

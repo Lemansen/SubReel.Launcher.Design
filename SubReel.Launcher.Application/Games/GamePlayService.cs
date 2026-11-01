@@ -9,7 +9,11 @@ namespace SubReel.Launcher.Application.Games;
 
 /// <summary>Что нажал пользователь: версия из нижней панели, загрузчик (и его версия, если выбрана) и активный аккаунт.</summary>
 /// <param name="LoaderVersion">Версия загрузчика. null у ванили; у Fabric, Quilt, Forge и NeoForge null означает «последняя стабильная».</param>
-public sealed record PlayRequest(string McVersion, LoaderKind Loader, LauncherAccount Account, string? LoaderVersion = null);
+/// <param name="InstanceId">
+/// Сборка, выбранная вручную. Если задана, версия игры, загрузчик и его версия берутся из неё (поля запроса игнорируются),
+/// а игра запускается в папке именно этой сборки. null — обычная версия: сборка находится или создаётся автоматически.
+/// </param>
+public sealed record PlayRequest(string McVersion, LoaderKind Loader, LauncherAccount Account, string? LoaderVersion = null, string? InstanceId = null);
 
 /// <summary>Итог нажатия «Играть». <see cref="Instance"/> — сборка, под которую шёл запуск (null, если до неё дело не дошло).</summary>
 public sealed record PlayResult(LaunchResult Launch, Instance? Instance);
@@ -48,10 +52,27 @@ public sealed class GamePlayService
     public async Task<PlayResult> PlayAsync(PlayRequest request, IProgress<LaunchProgress>? progress = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrWhiteSpace(request.McVersion)) throw new ArgumentException("Не указана версия игры.", nameof(request));
 
-        var mcVersion = request.McVersion.Trim();
-        var loader = request.Loader;
+        // Сборка, выбранная вручную, сама определяет версию и загрузчик: запрос нужен только ради аккаунта.
+        Instance? chosen = null;
+        if (!string.IsNullOrWhiteSpace(request.InstanceId))
+        {
+            chosen = await _instances.GetAsync(request.InstanceId, ct).ConfigureAwait(false);
+            if (chosen is null)
+            {
+                return new PlayResult(
+                    LaunchResult.Fail(LaunchFailure.InstanceUnavailable, "Выбранная сборка не найдена: возможно, её удалили. Выбери другую сборку или версию."),
+                    null);
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(request.McVersion))
+        {
+            throw new ArgumentException("Не указана версия игры.", nameof(request));
+        }
+
+        var mcVersion = chosen?.McVersion.Trim() ?? request.McVersion.Trim();
+        var loader = chosen?.Loader ?? request.Loader;
+        var requestedLoaderVersion = chosen is null ? request.LoaderVersion : chosen.LoaderVersion;
 
         // Не создаём сборку, которую всё равно нельзя запустить.
         if (loader != LoaderKind.Vanilla && !LoaderInfo.CanInstall(loader))
@@ -63,7 +84,7 @@ public sealed class GamePlayService
         if (loader != LoaderKind.Vanilla)
         {
             progress?.Report(new LaunchProgress(LaunchStage.PreparingLoader, 0));
-            var prepared = await _loaders.EnsureAsync(loader, mcVersion, request.LoaderVersion, ct).ConfigureAwait(false);
+            var prepared = await _loaders.EnsureAsync(loader, mcVersion, requestedLoaderVersion, ct).ConfigureAwait(false);
             if (!prepared.Succeeded || prepared.VersionId is null || prepared.LoaderVersion is null)
             {
                 return new PlayResult(
@@ -75,7 +96,9 @@ public sealed class GamePlayService
             loaderVersion = prepared.LoaderVersion;
         }
 
-        var instance = await FindOrCreateAsync(mcVersion, loader, loaderVersion, ct).ConfigureAwait(false);
+        var instance = chosen is null
+            ? await FindOrCreateAsync(mcVersion, loader, loaderVersion, ct).ConfigureAwait(false)
+            : await RememberLoaderVersionAsync(chosen, loaderVersion, ct).ConfigureAwait(false);
         if (instance is null)
         {
             return new PlayResult(

@@ -24,6 +24,7 @@ internal static class PresentationServiceCollectionExtensions
         services.AddSingleton<VersionsViewModel>();
         services.AddSingleton<VersionDropdownViewModel>();
         services.AddSingleton<NewsViewModel>();
+        services.AddSingleton<BuildsViewModel>();
         services.AddSingleton<HubViewModel>();
         services.AddSingleton<IOverlayFactory, OverlayFactory>();
         services.AddSingleton<MainViewModel>();

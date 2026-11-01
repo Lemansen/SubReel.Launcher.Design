@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using SubReel.Launcher.Application.Versions;
+using SubReel.Launcher.Domain.Instances;
 using SubReel.Launcher.Domain.Versions;
 
 namespace SubReel.Launcher.Tests;
@@ -217,5 +218,73 @@ public sealed class VersionStoreTests
 
         Assert.Equal(LoaderKind.Forge, store.SelectedLoader);
         Assert.Equal("1.20.1 · Forge", store.VersionLabel);
+    }
+
+    // ───────────────────────── 11.2: выбранная вручную сборка ─────────────────────────
+
+    private static Instance Build(string id = "moya", string mc = "1.20.4", LoaderKind loader = LoaderKind.Fabric, string? loaderVersion = "0.15.0") =>
+        new() { Id = id, Name = "Моя сборка", McVersion = mc, Loader = loader, LoaderVersion = loaderVersion };
+
+    [Fact]
+    public void SelectInstance_takes_version_and_loader_from_the_build_and_saves_the_choice()
+    {
+        var settings = new FakeSettingsService();
+        var store = Create(settings);
+
+        store.SelectInstance(Build());
+
+        Assert.Equal("1.20.4", store.SelectedVersion);
+        Assert.Equal(LoaderKind.Fabric, store.SelectedLoader);
+        Assert.Equal("0.15.0", store.SelectedLoaderVersion);
+        Assert.Equal("moya", store.SelectedInstance!.Id);
+        Assert.Equal("moya", settings.Current.SelectedInstanceId);
+        Assert.Null(settings.Current.SelectedInstallId);
+        Assert.Equal("Сборка «Моя сборка» · 1.20.4", store.RunLabel);
+    }
+
+    [Fact]
+    public void Choosing_a_regular_version_leaves_the_build()
+    {
+        var settings = new FakeSettingsService();
+        var store = Create(settings);
+        store.SelectInstance(Build());
+
+        store.Select("1.21.1");
+
+        Assert.Null(store.SelectedInstance);
+        Assert.Null(settings.Current.SelectedInstanceId);
+        Assert.Equal(LoaderKind.Vanilla, store.SelectedLoader);
+        Assert.Equal("Minecraft 1.21.1", store.RunLabel);
+    }
+
+    [Fact]
+    public void ForgetInstance_clears_only_the_selected_build()
+    {
+        var settings = new FakeSettingsService();
+        var store = Create(settings);
+        store.SelectInstance(Build());
+
+        store.ForgetInstance("drugaya");
+        Assert.NotNull(store.SelectedInstance);
+
+        store.ForgetInstance("moya");
+        Assert.Null(store.SelectedInstance);
+        Assert.Null(settings.Current.SelectedInstanceId);
+        Assert.Equal(LoaderKind.Vanilla, store.SelectedLoader);
+    }
+
+    [Fact]
+    public async Task Saved_build_that_cannot_be_found_is_dropped_on_initialization()
+    {
+        var settings = new FakeSettingsService();
+        settings.Current.SelectedVersion = "1.20.4";
+        settings.Current.SelectedInstanceId = "propala"; // InstanceService не передан — найти сборку нельзя
+        var store = Create(settings);
+
+        await store.InitializeAsync();
+
+        Assert.Null(store.SelectedInstance);
+        Assert.Null(settings.Current.SelectedInstanceId);
+        Assert.Equal("1.20.4", store.SelectedVersion);
     }
 }

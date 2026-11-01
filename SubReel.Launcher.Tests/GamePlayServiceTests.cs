@@ -276,4 +276,76 @@ public sealed class GamePlayServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => env.Service.PlayAsync(Env.Request("  ")));
     }
+
+    // ───────────────────────── 11.2: сборка, выбранная вручную ─────────────────────────
+
+    private static PlayRequest ForBuild(string id) => new("", LoaderKind.Vanilla, new LauncherAccount { Name = "Steve" }, null, id);
+
+    [Fact]
+    public async Task Chosen_build_is_launched_in_its_own_folder_with_its_own_version_even_if_the_request_says_otherwise()
+    {
+        using var env = new Env();
+        var build = (await env.Instances.CreateAsync("Моя сборка", "1.20.4")).Instance!;
+
+        var result = await env.Service.PlayAsync(new PlayRequest("1.21.1", LoaderKind.Vanilla, new LauncherAccount { Name = "Steve" }, null, build.Id));
+
+        Assert.True(result.Launch.Succeeded);
+        Assert.Equal(build.Id, result.Instance!.Id);
+        var launch = Assert.Single(env.Launcher.Requests);
+        Assert.Equal("1.20.4", launch.VersionId);
+        Assert.Equal(env.Repo.GetGameDirectory(build.Id), launch.GameDirectory);
+        Assert.Single(await env.Instances.ListAsync()); // автосборка «Minecraft 1.21.1» не создавалась
+    }
+
+    [Fact]
+    public async Task Chosen_build_with_a_loader_prepares_that_loader_version_and_launches_its_profile()
+    {
+        using var env = new Env();
+        var build = (await env.Instances.CreateAsync("Фабрика", "1.21.1", LoaderKind.Fabric, "0.15.0")).Instance!;
+
+        var result = await env.Service.PlayAsync(ForBuild(build.Id));
+
+        Assert.True(result.Launch.Succeeded);
+        var call = Assert.Single(env.Loaders.Calls);
+        Assert.Equal((LoaderKind.Fabric, "1.21.1", "0.15.0"), call);
+        Assert.Equal(LoaderInfo.ProfileId(LoaderKind.Fabric, "1.21.1", "0.15.0"), env.Launcher.Requests.Single().VersionId);
+    }
+
+    [Fact]
+    public async Task Chosen_build_without_a_loader_version_remembers_the_one_that_was_installed()
+    {
+        using var env = new Env();
+        env.Loaders.LatestVersion = "0.16.9";
+        var build = (await env.Instances.CreateAsync("Фабрика", "1.21.1", LoaderKind.Fabric)).Instance!;
+
+        await env.Service.PlayAsync(ForBuild(build.Id));
+
+        Assert.Equal("0.16.9", (await env.Instances.GetAsync(build.Id))!.LoaderVersion);
+    }
+
+    [Fact]
+    public async Task Chosen_build_marks_the_time_of_last_play()
+    {
+        using var env = new Env();
+        env.Time.Now = new DateTimeOffset(2026, 11, 1, 12, 0, 0, TimeSpan.Zero);
+        var build = (await env.Instances.CreateAsync("Моя сборка", "1.21.1")).Instance!;
+
+        await env.Service.PlayAsync(ForBuild(build.Id));
+
+        Assert.Equal(env.Time.Now.UtcDateTime, (await env.Instances.GetAsync(build.Id))!.LastPlayedUtc);
+    }
+
+    [Fact]
+    public async Task Missing_chosen_build_fails_without_launching_or_creating_anything()
+    {
+        using var env = new Env();
+
+        var result = await env.Service.PlayAsync(ForBuild("net-takoy"));
+
+        Assert.False(result.Launch.Succeeded);
+        Assert.Equal(LaunchFailure.InstanceUnavailable, result.Launch.Failure);
+        Assert.Null(result.Instance);
+        Assert.Empty(env.Launcher.Requests);
+        Assert.Empty(await env.Instances.ListAsync());
+    }
 }

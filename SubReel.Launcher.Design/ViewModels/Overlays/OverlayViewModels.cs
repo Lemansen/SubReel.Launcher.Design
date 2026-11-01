@@ -6,6 +6,10 @@ namespace SubReel.Launcher.Design.ViewModels;
 public abstract class OverlayViewModel : ObservableObject
 {
     public abstract string Title { get; }
+
+    /// <summary>Ширина и предельная высота карточки окна; большие экраны («Аккаунты») переопределяют.</summary>
+    public virtual double CardWidth => 680;
+    public virtual double CardMaxHeight => 520;
 }
 
 /// <summary>Блок «заголовок + пояснение».</summary>
@@ -106,32 +110,4 @@ public sealed class SettingsOverlayViewModel : OverlayViewModel
 
     public bool AutoUpdate { get => _autoUpdate; set => SetProperty(ref _autoUpdate, value); }
     public bool CloseAfterLaunch { get => _closeAfterLaunch; set => SetProperty(ref _closeAfterLaunch, value); }
-}
-
-/// <summary>Создание сборки (демо: файлы не загружаются).</summary>
-public sealed class ModpackOverlayViewModel : OverlayViewModel
-{
-    private readonly NavigationService _nav;
-    private string _name = "Моя сборка";
-    private string _selectedLoader = "Fabric";
-
-    public ModpackOverlayViewModel(NavigationService nav)
-    {
-        _nav = nav;
-        CreateCommand = new RelayCommand(Create);
-    }
-
-    public override string Title => "Создать сборку";
-
-    public string Name { get => _name; set => SetProperty(ref _name, value); }
-    public IReadOnlyList<string> Loaders { get; } = new[] { "Vanilla", "Fabric", "Forge", "NeoForge", "Quilt" };
-    public string SelectedLoader { get => _selectedLoader; set => SetProperty(ref _selectedLoader, value); }
-
-    public ICommand CreateCommand { get; }
-
-    private void Create() =>
-        _nav.ShowOverlay(new MessageOverlayViewModel("Сборка подготовлена", new[]
-        {
-            new InfoBlockItem(Name, $"Профиль с загрузчиком {SelectedLoader} показан в демо-режиме. Файлы не загружаются."),
-        }));
 }

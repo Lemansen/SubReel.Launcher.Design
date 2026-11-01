@@ -1,6 +1,10 @@
 using System.Windows.Input;
+using System.IO;
 using Microsoft.Extensions.Logging;
+using SubReel.Launcher.Application.Games;
+using SubReel.Launcher.Application.Instances;
 using SubReel.Launcher.Application.Loaders;
+using SubReel.Launcher.Domain.Instances;
 
 namespace SubReel.Launcher.Design.ViewModels;
 
@@ -40,6 +44,31 @@ public sealed class InstalledVersionRowViewModel
     }
 
     public InstalledVersion Version { get; }
+    public LoaderKind Kind { get; }
+    public string Title { get; }
+    public string Detail { get; }
+    public bool IsSelected { get; }
+    public ICommand PickCommand { get; }
+}
+
+/// <summary>Сборка, созданная вручную («Мои сборки»): выбор запоминается, «Играть» запускает именно её.</summary>
+public sealed class InstanceRowViewModel
+{
+    public InstanceRowViewModel(Instance instance, bool isSelected, Action<Instance> pick)
+    {
+        Instance = instance;
+        IsSelected = isSelected;
+        PickCommand = new RelayCommand(() => pick(instance));
+        Kind = instance.Loader;
+        Title = instance.Name;
+        Detail = instance.Loader == LoaderKind.Vanilla
+            ? $"Minecraft {instance.McVersion}"
+            : string.IsNullOrEmpty(instance.LoaderVersion)
+                ? $"Minecraft {instance.McVersion} · {LoaderInfo.Name(instance.Loader)}"
+                : $"Minecraft {instance.McVersion} · {LoaderInfo.Name(instance.Loader)} {instance.LoaderVersion}";
+    }
+
+    public Instance Instance { get; }
     public LoaderKind Kind { get; }
     public string Title { get; }
     public string Detail { get; }
@@ -91,9 +120,11 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     private readonly VersionStore _store;
     private readonly NavigationService _nav;
     private readonly ILoaderCatalog _catalog;
+    private readonly InstanceService _instances;
     private readonly ILogger<VersionDropdownViewModel> _logger;
     private readonly CancellationTokenSource _lifetime = new();
 
+    private IReadOnlyList<Instance> _myBuilds = Array.Empty<Instance>();
     private IReadOnlyList<LoaderBuild> _available = Array.Empty<LoaderBuild>();
     private string _availableFor = "";
     private int _availableToken;
@@ -105,11 +136,13 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     private bool _showEmptyState;
     private string _emptyHint = "";
 
-    public VersionDropdownViewModel(VersionStore store, NavigationService nav, ILoaderCatalog catalog, ILogger<VersionDropdownViewModel> logger)
+    public VersionDropdownViewModel(VersionStore store, NavigationService nav, ILoaderCatalog catalog, InstanceService instances,
+        ILogger<VersionDropdownViewModel> logger)
     {
         _store = store;
         _nav = nav;
         _catalog = catalog;
+        _instances = instances;
         _logger = logger;
         ToggleCommand = new RelayCommand(nav.ToggleVersionDropdown);
         ShowAllCommand = new RelayCommand(nav.OpenAllVersions);
@@ -126,6 +159,7 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
             // Список мог измениться за пределами лаунчера — перечитываем папку в фоне; готовый результат перерисует список.
             _store.RefreshInstalled();
             RefreshAvailable();
+            RefreshMyBuilds();
         };
     }
 
@@ -143,7 +177,7 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     public string VersionLabel => _store.VersionLabel;
 
     /// <summary>До окончания сканирования индикатор скрыт — не гадаем.</summary>
-    public bool ShowStatusDot => _store.InstalledScanned && !string.IsNullOrEmpty(_store.SelectedVersion);
+    public bool ShowStatusDot => _store.InstalledScanned && !string.IsNullOrEmpty(_store.SelectedVersion) && _store.SelectedInstance is null;
 
     public bool IsSelectedInstalled => _store.SelectedInstall is not null;
 
@@ -185,7 +219,7 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
             : $"{installed.Count} {TextHelpers.Plural(installed.Count, "версия установлена", "версии установлены", "версий установлено")}";
 
         // Выбранной версии нет в папке игры: это не помеха (файлы лаунчер скачает сам при первом запуске), но говорим об этом прямо.
-        ShowMissingNotice = _store.SelectedInstall is null && !string.IsNullOrEmpty(_store.SelectedVersion);
+        ShowMissingNotice = _store.SelectedInstance is null && _store.SelectedInstall is null && !string.IsNullOrEmpty(_store.SelectedVersion);
         MissingNoticeText = $"Выбрана {_store.VersionLabel} — нет в папке игры";
 
         ShowEmptyState = installed.Count == 0;
@@ -193,7 +227,8 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
             ? $"В папке {_store.GameDirectory}\\versions нет готовых версий."
             : $"Папка игры не найдена: {_store.GameDirectory}";
 
-        var rows = new List<object>(installed.Count + 6);
+        var rows = new List<object>(installed.Count + _myBuilds.Count + 7);
+        AddMyBuilds(rows);
         foreach (var group in installed.GroupBy(i => i.Loader).OrderBy(g => g.Key))
         {
             rows.Add(new LoaderHeaderRowViewModel(group.Key, group.Count()));
@@ -210,6 +245,8 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     {
         if (!string.Equals(_availableFor, _store.SelectedVersion, StringComparison.Ordinal)) return;
 
+        if (_store.SelectedInstance is not null) return; // у выбранной вручную сборки свой загрузчик: предложения для обычных версий не нужны
+
         var installedIds = installed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
         var offers = _available.Where(b => !installedIds.Contains(b.ProfileId)).ToList();
         if (offers.Count == 0) return;
@@ -219,10 +256,57 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     }
 
     private bool IsSelectedOffer(LoaderBuild build) =>
-        _store.SelectedInstall is null
+        _store.SelectedInstance is null
+        && _store.SelectedInstall is null
         && _store.SelectedLoader == build.Kind
         && string.Equals(_store.SelectedLoaderVersion, build.Version, StringComparison.Ordinal)
         && string.Equals(_store.SelectedVersion, build.McVersion, StringComparison.Ordinal);
+
+    /// <summary>Раздел «Мои сборки»: сборки, созданные вручную (автосборки «Minecraft &lt;версия&gt;» не показываются — они и так выбираются версией).</summary>
+    private void AddMyBuilds(List<object> rows)
+    {
+        if (_myBuilds.Count == 0) return;
+
+        rows.Add(new SectionHeaderRowViewModel("МОИ СБОРКИ"));
+        var selectedId = _store.SelectedInstance?.Id;
+        foreach (var build in _myBuilds)
+            rows.Add(new InstanceRowViewModel(build, string.Equals(build.Id, selectedId, StringComparison.Ordinal), PickInstance));
+    }
+
+    private void PickInstance(Instance build)
+    {
+        _store.SelectInstance(build);
+        _nav.CloseVersionDropdown();
+    }
+
+    private void RefreshMyBuilds() => LoadMyBuildsAsync(_lifetime.Token).FireAndForget(_logger, "список моих сборок");
+
+    private async Task LoadMyBuildsAsync(CancellationToken ct)
+    {
+        IReadOnlyList<Instance> all;
+        try
+        {
+            all = await _instances.ListAsync(ct);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Не удалось прочитать список сборок.");
+            return;
+        }
+
+        _myBuilds = all
+            .Where(i => !IsAutoBuild(i))
+            .OrderByDescending(i => i.LastPlayedUtc ?? i.CreatedUtc)
+            .ToList();
+
+        // Выбранную сборку удалили (например, вручную в папке): возвращаемся к обычной версии.
+        if (_store.SelectedInstance is { } selected && all.All(i => i.Id != selected.Id)) _store.ForgetInstance(selected.Id);
+
+        if (_nav.IsVersionDropdownOpen) BuildRows();
+    }
+
+    private static bool IsAutoBuild(Instance i) =>
+        string.Equals(i.Name.Trim(), GamePlayService.AutoName(i.McVersion, i.Loader), StringComparison.OrdinalIgnoreCase);
 
     private void PickInstalled(InstalledVersion version)
     {

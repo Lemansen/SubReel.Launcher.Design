@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SubReel.Launcher.Application.Abstractions;
+using SubReel.Launcher.Application.Instances;
+using SubReel.Launcher.Domain.Instances;
 using SubReel.Launcher.Domain.Versions;
 
 namespace SubReel.Launcher.Application.Versions;
@@ -15,11 +17,15 @@ public sealed class VersionStore
     private readonly IVersionCatalogService _catalogs;
     private readonly IInstalledVersionService _installedService;
     private readonly ILogger<VersionStore> _logger;
+    private readonly InstanceService? _instances;
     private int _scanToken;
 
-    public VersionStore(ISettingsService settings, IVersionCatalogService catalogs, IInstalledVersionService installedService, ILogger<VersionStore> logger)
+    /// <param name="instances">Нужен, чтобы при запуске найти сборку, выбранную вручную. null (тесты) — выбор сборки при запуске не восстанавливается.</param>
+    public VersionStore(ISettingsService settings, IVersionCatalogService catalogs, IInstalledVersionService installedService, ILogger<VersionStore> logger,
+        InstanceService? instances = null)
     {
         _settings = settings;
+        _instances = instances;
         _logger = logger;
         _catalogs = catalogs;
         _installedService = installedService;
@@ -45,6 +51,12 @@ public sealed class VersionStore
     public InstalledVersion? SelectedInstall { get; private set; }
 
     /// <summary>
+    /// Сборка, выбранная вручную (создана на странице «Создать сборку» или выбрана в «Мои сборки»). null — выбрана обычная версия.
+    /// Пока она задана, версия игры, загрузчик и его версия берутся из неё, а «Играть» запускает именно эту сборку.
+    /// </summary>
+    public Instance? SelectedInstance { get; private set; }
+
+    /// <summary>
     /// Загрузчик выбранной версии: у установленной версии — её загрузчик, у сборки Fabric или Quilt, которой ещё нет на диске
     /// (выбрана из раздела «Доступно для установки»), — загрузчик из её имени. Иначе ваниль.
     /// </summary>
@@ -66,11 +78,17 @@ public sealed class VersionStore
         get
         {
             if (string.IsNullOrEmpty(SelectedVersion)) return "…";
+            if (SelectedInstance is { } build) return $"{ShortName(build.Name)} · {SelectedVersion}";
             return SelectedLoader != LoaderKind.Vanilla
                 ? $"{SelectedVersion} · {(SelectedLoader == LoaderKind.Other ? "особая" : LoaderInfo.Name(SelectedLoader))}"
                 : SelectedVersion;
         }
     }
+
+    /// <summary>Что запускается кнопкой «Играть», для окон с ходом и ошибками: «Minecraft 1.21.1 · Fabric» или «Сборка «Моя» · 1.21.1».</summary>
+    public string RunLabel => SelectedInstance is { } build ? $"Сборка «{build.Name}» · {SelectedVersion}" : $"Minecraft {VersionLabel}";
+
+    private static string ShortName(string name) => name.Length <= 22 ? name : name[..21].TrimEnd() + "…";
 
     /// <summary>Недавно выбранные версии (новые первыми).</summary>
     public IReadOnlyList<string> RecentVersions => _settings.Current.RecentVersions;
@@ -80,6 +98,7 @@ public sealed class VersionStore
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         if (_settings.Current.SelectedVersion is { Length: > 0 } saved) SelectedVersion = saved;
+        await RestoreSelectedInstanceAsync(ct); // продолжение остаётся в потоке интерфейса: ниже срабатывают события
         ApplySelectedLoader(); // подпись «1.21.1 · Fabric» нужна сразу, не дожидаясь сканирования папки
         Changed?.Invoke(this, EventArgs.Empty);
 
@@ -102,6 +121,35 @@ public sealed class VersionStore
         if (InstalledScanned) ResolveSelectedInstall();
         Changed?.Invoke(this, EventArgs.Empty);
         CatalogReady?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Находит сборку, выбранную в прошлый раз. Если её удалили или не удалось прочитать, выбор сбрасывается на обычную версию.</summary>
+    private async Task RestoreSelectedInstanceAsync(CancellationToken ct)
+    {
+        if (_settings.Current.SelectedInstanceId is not { Length: > 0 } id) return;
+
+        Instance? found = null;
+        if (_instances is not null)
+        {
+            try
+            {
+                found = await _instances.GetAsync(id, ct);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(ex, "Не удалось прочитать выбранную сборку {Id}.", id);
+            }
+        }
+
+        if (found is not null)
+        {
+            SelectedInstance = found;
+            SelectedVersion = found.McVersion;
+            return;
+        }
+
+        _settings.Current.SelectedInstanceId = null;
+        _settings.Save();
     }
 
     /// <summary>Каталог встроенный или из копии на диске — его нужно обновить, как только появится сеть.</summary>
@@ -169,6 +217,13 @@ public sealed class VersionStore
     /// <summary>Находит среди установленных версию, соответствующую сохранённому выбору. Нет в списке = не установлена.</summary>
     private void ResolveSelectedInstall()
     {
+        if (SelectedInstance is not null)
+        {
+            SelectedInstall = null; // у выбранной вручную сборки свой запуск: версия из папки игры не отмечается
+            ApplySelectedLoader();
+            return;
+        }
+
         SelectedInstall = _settings.Current.SelectedInstallId is { Length: > 0 } id
             ? Installed.FirstOrDefault(i => i.Id == id)
             : Installed.FirstOrDefault(i => i.Loader == LoaderKind.Vanilla && i.McVersion == SelectedVersion);
@@ -181,6 +236,13 @@ public sealed class VersionStore
     /// </summary>
     private void ApplySelectedLoader()
     {
+        if (SelectedInstance is { } build)
+        {
+            SelectedLoader = build.Loader;
+            SelectedLoaderVersion = build.LoaderVersion;
+            return;
+        }
+
         if (SelectedInstall is { } install)
         {
             SelectedLoader = install.Loader;
@@ -229,8 +291,42 @@ public sealed class VersionStore
         Commit(build.McVersion, null, profileId);
     }
 
+    /// <summary>Выбор сборки, созданной вручную: «Играть» запустит именно её (со своими модами, мирами и настройками).</summary>
+    public void SelectInstance(Instance build)
+    {
+        ArgumentNullException.ThrowIfNull(build);
+
+        SelectedInstance = build;
+        SelectedVersion = build.McVersion;
+        SelectedInstall = null;
+        _settings.Current.SelectedVersion = build.McVersion;
+        _settings.Current.SelectedInstallId = null;
+        _settings.Current.SelectedInstanceId = build.Id;
+        ApplySelectedLoader();
+        _settings.Save();
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        VersionSelected?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Сборку удалили или она пропала с диска: если она выбрана, возвращаемся к обычной версии с тем же номером.</summary>
+    public void ForgetInstance(string id)
+    {
+        if (SelectedInstance is null || !string.Equals(SelectedInstance.Id, id, StringComparison.Ordinal)) return;
+
+        SelectedInstance = null;
+        _settings.Current.SelectedInstanceId = null;
+        _settings.Save();
+        if (InstalledScanned) ResolveSelectedInstall(); else ApplySelectedLoader();
+
+        Changed?.Invoke(this, EventArgs.Empty);
+        VersionSelected?.Invoke(this, EventArgs.Empty);
+    }
+
     private void Commit(string mcVersion, InstalledVersion? install, string? installId)
     {
+        SelectedInstance = null;
+        _settings.Current.SelectedInstanceId = null;
         SelectedVersion = mcVersion;
         _settings.Current.SelectedVersion = mcVersion;
         SelectedInstall = install;

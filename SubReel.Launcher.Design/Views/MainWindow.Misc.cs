@@ -11,6 +11,7 @@ public partial class MainWindow
     private int _toastToken;
     private int _progressAnimationToken;
     private int _newsPanelToken;
+    private int _buildsPanelToken;
     private int _newsDetailToken;
 
     // ───────────────────────── Уведомление ─────────────────────────
@@ -78,6 +79,30 @@ public partial class MainWindow
         };
         NewsPanel.BeginAnimation(UIElement.OpacityProperty, fade);
         if (NewsPanel.RenderTransform is TranslateTransform shift)
+            shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(40, TimeSpan.FromMilliseconds(400)) { EasingFunction = Anim.OutQuart });
+    }
+
+    // ───────────────────────── Создание сборки ─────────────────────────
+
+    private void OpenBuildsAnimated()
+    {
+        _buildsPanelToken++; // отменяет отложенное скрытие
+        BuildsPanel.Visibility = Visibility.Visible;
+        BuildsPanel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(300)));
+        if (BuildsPanel.RenderTransform is TranslateTransform shift)
+            shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(40, 0, TimeSpan.FromMilliseconds(500)) { EasingFunction = Anim.OutQuart });
+    }
+
+    private void CloseBuildsAnimated()
+    {
+        var token = ++_buildsPanelToken;
+        var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(250));
+        fade.Completed += (_, _) =>
+        {
+            if (token == _buildsPanelToken) BuildsPanel.Visibility = Visibility.Collapsed;
+        };
+        BuildsPanel.BeginAnimation(UIElement.OpacityProperty, fade);
+        if (BuildsPanel.RenderTransform is TranslateTransform shift)
             shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(40, TimeSpan.FromMilliseconds(400)) { EasingFunction = Anim.OutQuart });
     }
 

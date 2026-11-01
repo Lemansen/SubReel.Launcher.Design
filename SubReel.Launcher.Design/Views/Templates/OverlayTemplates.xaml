@@ -41,20 +41,162 @@
   </StackPanel>
  </DataTemplate>
 
- <!-- Личный кабинет -->
+ <!-- Аккаунты: слева профиль (вкладки «Профиль» и «Оформление»), справа список аккаунтов -->
  <DataTemplate DataType="{x:Type vm:AccountOverlayViewModel}">
-  <StackPanel>
-   <ctl:InfoBlock Title="{Binding AccountTitle}" Detail="{Binding AccountDetail}"/>
-   <StackPanel Visibility="{Binding IsOffline, Converter={StaticResource BoolToVis}}">
-    <TextBox Text="{Binding Nickname, UpdateSourceTrigger=PropertyChanged}" MaxLength="16" Height="38" Padding="10,8" Background="#111116" Foreground="White" CaretBrush="White"
-             Margin="0,10,0,15" Style="{StaticResource ErrorableTextBox}" Tag="{Binding HasNicknameError, Converter={StaticResource ErrorTag}}"/>
-    <Button Content="Сохранить ник" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" MinWidth="140" Command="{Binding SaveNicknameCommand}"/>
-   </StackPanel>
-   <Button Content="Выйти из аккаунта" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" MinWidth="140" Margin="0,10,0,0" Command="{Binding SignOutCommand}"
-           Visibility="{Binding CanSignOut, Converter={StaticResource BoolToVis}}"/>
-   <ContentControl Content="{Binding Cosmetics}" Focusable="False"/>
-   <ctl:InfoBlock Title="Аккаунты" Detail="Аккаунт Microsoft добавляется через меню профиля. SubReel ID появится позже."/>
-  </StackPanel>
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
+
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+     <Button Content="Профиль" Style="{StaticResource TabButton}" Command="{Binding ShowProfileTabCommand}" Tag="{Binding IsProfileTab, Converter={StaticResource ActiveTag}}"/>
+     <Button Content="Оформление" Style="{StaticResource TabButton}" Command="{Binding ShowCosmeticsTabCommand}" Tag="{Binding IsCosmeticsTab, Converter={StaticResource ActiveTag}}"/>
+    </StackPanel>
+
+    <!-- Вкладка «Профиль» -->
+    <StackPanel Grid.Row="1" Visibility="{Binding IsProfileTab, Converter={StaticResource BoolToVis}}">
+     <Border Height="236" CornerRadius="22" BorderBrush="#1FFFFFFF" BorderThickness="1" ClipToBounds="True">
+      <Border.Background>
+       <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#2A3B7A" Offset="0"/><GradientStop Color="#14142A" Offset="0.55"/><GradientStop Color="#0E0E14" Offset="1"/></LinearGradientBrush>
+      </Border.Background>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Ellipse Width="320" Height="320" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-80,0,0,0" IsHitTestVisible="False">
+        <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#334C85FF" Offset="0"/><GradientStop Color="#004C85FF" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+       </Ellipse>
+       <!-- Фигура игрока; пока не загрузилась (или нет сети) — аватарка -->
+       <Grid Margin="10,12,0,0" VerticalAlignment="Bottom">
+        <ctl:AvatarControl AccountName="{Binding Profile.ActiveName}" Look="{Binding Profile.Look}" Size="96" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,60"/>
+        <Image Source="{Binding BodyUrl}" Height="220" Stretch="Uniform" VerticalAlignment="Bottom" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+       </Grid>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,24,0">
+        <StackPanel Orientation="Horizontal">
+         <TextBlock Text="{Binding Profile.ActiveName}" Foreground="{Binding Profile.Look.NickBrush}" FontSize="30" FontWeight="Black" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+         <Border Margin="12,0,0,0" Padding="10,3" CornerRadius="9" VerticalAlignment="Center" Background="#1A4C85FF" BorderBrush="#554C85FF" BorderThickness="1">
+          <TextBlock Text="{Binding KindText}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentLight}"/>
+         </Border>
+        </StackPanel>
+        <TextBlock Text="{Binding AccountTitle}" FontSize="13" Foreground="{StaticResource TextMuted}" Margin="0,4,0,18"/>
+
+        <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditingNick, Converter={StaticResource InvBoolToVis}}">
+         <Button Content="Изменить ник" Style="{StaticResource SecondaryButton}" Padding="16,10" Margin="0,0,10,0" Command="{Binding StartEditNickCommand}" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVis}}"/>
+         <Button Content="Выйти из аккаунта" Style="{StaticResource SecondaryButton}" Padding="16,10" Command="{Binding SignOutCommand}" Visibility="{Binding CanSignOut, Converter={StaticResource BoolToVis}}"/>
+         <Button Content="Оформление" Style="{StaticResource SecondaryButton}" Padding="16,10" Margin="10,0,0,0" Command="{Binding ShowCosmeticsTabCommand}"/>
+        </StackPanel>
+        <StackPanel Visibility="{Binding IsEditingNick, Converter={StaticResource BoolToVis}}">
+         <TextBox Text="{Binding Nickname, UpdateSourceTrigger=PropertyChanged}" MaxLength="16" Height="38" Padding="10,8" Background="#111116" Foreground="White" CaretBrush="White"
+                  Style="{StaticResource ErrorableTextBox}" Tag="{Binding HasNicknameError, Converter={StaticResource ErrorTag}}">
+          <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SaveNicknameCommand}"/></TextBox.InputBindings>
+         </TextBox>
+         <TextBlock Text="3–16 символов: латиница, цифры и «_». Такого аккаунта ещё не должно быть." FontSize="11.5" Foreground="{StaticResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"/>
+         <StackPanel Orientation="Horizontal">
+          <Button Content="Сохранить" Style="{StaticResource PrimaryButton}" Padding="18,9" Margin="0,0,10,0" Command="{Binding SaveNicknameCommand}"/>
+          <Button Content="Отмена" Style="{StaticResource SecondaryButton}" Padding="18,9" Command="{Binding CancelEditNickCommand}"/>
+         </StackPanel>
+        </StackPanel>
+       </StackPanel>
+      </Grid>
+     </Border>
+
+     <Border Margin="0,14,0,0" Padding="20,16" CornerRadius="18" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1">
+      <StackPanel>
+       <TextBlock Text="{Binding AccountTitle}" FontSize="15" FontWeight="Bold"/>
+       <TextBlock Text="{Binding AccountDetail}" FontSize="12.5" LineHeight="19" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+      </StackPanel>
+     </Border>
+    </StackPanel>
+
+    <!-- Вкладка «Оформление» -->
+    <ContentControl Grid.Row="1" Content="{Binding Cosmetics}" Focusable="False" Visibility="{Binding IsCosmeticsTab, Converter={StaticResource BoolToVis}}"/>
+   </Grid>
+
+   <!-- Список аккаунтов -->
+   <Border Grid.Column="2" Padding="14" CornerRadius="20" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1" VerticalAlignment="Stretch">
+    <DockPanel>
+     <Button DockPanel.Dock="Bottom" Style="{StaticResource SecondaryButton}" Background="#264C85FF" BorderBrush="#AA4C85FF" Margin="0,12,0,0" Command="{Binding AddAccountCommand}">
+      <StackPanel Orientation="Horizontal">
+       <TextBlock Text="Добавить аккаунт" VerticalAlignment="Center"/>
+       <Viewbox Width="14" Height="14" Margin="10,0,0,0"><Canvas Width="24" Height="24"><Path Stroke="White" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="{StaticResource IconPlus}"/></Canvas></Viewbox>
+      </StackPanel>
+     </Button>
+     <TextBlock DockPanel.Dock="Top" Text="СПИСОК АККАУНТОВ" Style="{StaticResource SectionLabel}" Margin="6,2,0,10"/>
+     <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Profile.Accounts}" Focusable="False">
+       <ItemsControl.ItemTemplate>
+        <DataTemplate>
+         <Grid Margin="0,0,0,4">
+          <Button Style="{StaticResource MenuItemButton}" Command="{Binding DataContext.SelectAccountCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}">
+           <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <ctl:AvatarControl AccountName="{Binding Name}" Look="{Binding Look}" Size="34" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Margin="12,0,28,0" VerticalAlignment="Center">
+             <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{Binding Look.NickBrush}"/>
+             <TextBlock Text="{Binding Kind}" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
+            </StackPanel>
+            <Border Grid.Column="2" Width="20" Height="20" CornerRadius="10" Background="{StaticResource AccentBlue}" VerticalAlignment="Center" Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
+             <Viewbox Width="11" Height="11"><Canvas Width="24" Height="24"><Path Stroke="White" StrokeThickness="3.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas></Viewbox>
+            </Border>
+           </Grid>
+          </Button>
+          <Button Style="{StaticResource WindowCloseButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Удалить аккаунт"
+                  Command="{Binding RemoveCommand}" Visibility="{Binding CanRemove, Converter={StaticResource BoolToVis}}">
+           <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconX}"/></Canvas></Viewbox>
+          </Button>
+         </Grid>
+        </DataTemplate>
+       </ItemsControl.ItemTemplate>
+      </ItemsControl>
+     </ScrollViewer>
+    </DockPanel>
+   </Border>
+  </Grid>
+ </DataTemplate>
+
+ <!-- Добавить аккаунт: выбор типа. Логотипы — из Assets/Logos (microsoft.png, offline.png), без файлов — запасные иконки -->
+ <DataTemplate DataType="{x:Type vm:AddAccountOverlayViewModel}">
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+   <Border Padding="22" CornerRadius="20" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1">
+    <DockPanel>
+     <Button DockPanel.Dock="Bottom" Content="Войти через Microsoft" Style="{StaticResource SecondaryButton}" Background="#264C85FF" BorderBrush="#AA4C85FF" Margin="0,8,0,0"
+             Command="{Binding MicrosoftCommand}" IsEnabled="{Binding IsMicrosoftAvailable}"/>
+     <StackPanel>
+      <ctl:BrandLogo Size="52" Logo="microsoft" Fallback="{StaticResource IconUser}" Accent="#00A4EF" HorizontalAlignment="Left"/>
+      <TextBlock Text="Лицензионный аккаунт Microsoft" FontSize="17" FontWeight="Black" TextWrapping="Wrap" Margin="0,14,0,4"/>
+      <TextBlock Text="Для купленной копии Minecraft" Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="0,0,0,16"/>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Ник и скин берутся из вашего профиля Minecraft" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Игра на лицензионных серверах" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Вход по коду на сайте Microsoft, пароль лаунчеру не нужен" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+     </StackPanel>
+    </DockPanel>
+   </Border>
+
+   <Border Grid.Column="2" Padding="22" CornerRadius="20" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1">
+    <DockPanel>
+     <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+      <TextBlock Text="3–16 символов: латиница, цифры и «_». Такого аккаунта ещё не должно быть." Foreground="#FF8A8A" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,8"
+                 Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}"/>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <TextBox Text="{Binding Nickname, UpdateSourceTrigger=PropertyChanged}" MaxLength="16" Height="40" Padding="10,0" VerticalContentAlignment="Center" Background="#111116" Foreground="White" CaretBrush="White"
+                Style="{StaticResource ErrorableTextBox}" Tag="{Binding HasError, Converter={StaticResource ErrorTag}}">
+        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding AddOfflineCommand}"/></TextBox.InputBindings>
+       </TextBox>
+       <Button Grid.Column="1" Content="Добавить" Style="{StaticResource PrimaryButton}" Padding="20,10" Margin="8,0,0,0" Command="{Binding AddOfflineCommand}"/>
+      </Grid>
+     </StackPanel>
+     <StackPanel>
+      <ctl:BrandLogo Size="52" Logo="offline" Fallback="{StaticResource IconUser}" Accent="#78C8FF" HorizontalAlignment="Left"/>
+      <TextBlock Text="Офлайн-аккаунт" FontSize="17" FontWeight="Black" Margin="0,14,0,4"/>
+      <TextBlock Text="Только ник" Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="0,0,0,16"/>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Без входа и без скинов с сервера" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Для одиночной игры и серверов без проверки лицензии" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><Viewbox Width="14" Height="14" Margin="0,2,10,0" VerticalAlignment="Top"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2" StrokeLineJoin="Round" Data="{StaticResource IconSparkles}"/></Canvas></Viewbox><TextBlock Text="Добавляется в один клик" Foreground="#D4D4D8" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" MaxWidth="290"/></StackPanel>
+     </StackPanel>
+    </DockPanel>
+   </Border>
+  </Grid>
  </DataTemplate>
 
  <!-- Вход через Microsoft: код устройства -->
@@ -112,15 +254,170 @@
   </StackPanel>
  </DataTemplate>
 
- <!-- Создание сборки (демо) -->
- <DataTemplate DataType="{x:Type vm:ModpackOverlayViewModel}">
-  <StackPanel>
-   <ctl:InfoBlock Title="Название" Detail="Создай отдельный профиль Minecraft."/>
-   <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Height="38" Padding="10,8" Background="#111116" Foreground="White" CaretBrush="White" BorderBrush="#373E50" Margin="0,12,0,14"/>
-   <ctl:InfoBlock Title="Загрузчик модов" Detail="Демонстрационный выбор без загрузки файлов."/>
-   <ComboBox ItemsSource="{Binding Loaders}" SelectedItem="{Binding SelectedLoader}" Height="38" Margin="0,0,0,18"/>
-   <Button Content="Создать (демо)" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" MinWidth="140" Command="{Binding CreateCommand}"/>
+ <!-- Загрузчик: иконка + название (данные — LoaderKind). Seg — в переключателе формы, Pill — метка на карточке «Своя сборка» -->
+ <DataTemplate x:Key="LoaderSegTemplate">
+  <StackPanel Orientation="Horizontal">
+   <ctl:LoaderTile Kind="{Binding}" Size="22"/>
+   <TextBlock Text="{Binding}" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"/>
   </StackPanel>
+ </DataTemplate>
+ <DataTemplate x:Key="LoaderPillTemplate">
+  <Border Margin="0,0,8,8" Padding="8,5,12,5" CornerRadius="12" Background="#0FFFFFFF" BorderBrush="#18FFFFFF" BorderThickness="1">
+   <StackPanel Orientation="Horizontal">
+    <ctl:LoaderTile Kind="{Binding}" Size="22"/>
+    <TextBlock Text="{Binding}" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Foreground="#D4D4D8"/>
+   </StackPanel>
+  </Border>
+ </DataTemplate>
+
+ <!-- Страница «Создать сборку»: карточки источников (bento-сетка, как на сайте) и форма своей сборки с живым превью -->
+ <DataTemplate DataType="{x:Type vm:BuildsViewModel}">
+  <Grid>
+   <!-- Источники: компактная сетка, помещается в минимальное окно без прокрутки. 3 колонки; большие карточки занимают две.
+        У каждого источника свой цвет и логотип (Assets/Logos, без файла — запасная иконка) -->
+   <Grid Visibility="{Binding IsSourcesOpen, Converter={StaticResource BoolToVis}}">
+    <Grid.RowDefinitions><RowDefinition Height="200"/><RowDefinition Height="160"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+    <Button Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource AccentBlue}" Command="{Binding StartCustomCommand}" BorderBrush="#774C85FF" Margin="0,0,14,14">
+     <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#264C85FF" Offset="0"/><GradientStop Color="#0F0F1C" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
+     <Grid><Ellipse Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-90,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#334C85FF" Offset="0"/><GradientStop Color="#004C85FF" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <ctl:BrandLogo Size="96" Logo="custom-build" Fallback="{StaticResource IconLayers}" Accent="#78C8FF" VerticalAlignment="Center" Margin="0,0,22,0"/>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Своя сборка" FontSize="22" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Выбери версию Minecraft и загрузчик. Папка сборки создаётся сразу, версия загрузчика подбирается автоматически." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/><ItemsControl ItemsSource="{Binding Loaders}" ItemTemplate="{StaticResource LoaderPillTemplate}" ItemsPanel="{StaticResource WrapPanelTemplate}" Margin="0,12,0,-8" Focusable="False"/></StackPanel>
+       <Border Grid.Column="2" Width="38" Height="38" CornerRadius="19" Background="#1AFFFFFF" VerticalAlignment="Center" Margin="12,0,0,0"><Viewbox Width="16" Height="16" RenderTransformOrigin="0.5,0.5"><Viewbox.RenderTransform><RotateTransform Angle="180"/></Viewbox.RenderTransform><Canvas Width="24" Height="24"><Path Stroke="White" StrokeThickness="2.2" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="{StaticResource IconArrowLeft}"/></Canvas></Viewbox></Border>
+      </Grid>
+     </Grid>
+    </Button>
+
+    <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource BrandModrinth}" IsEnabled="False" BorderBrush="#441BD96A" Margin="0,0,0,14">
+     <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#261BD96A" Offset="0"/><GradientStop Color="#0E140F" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
+     <Grid><Ellipse Width="220" Height="220" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-90,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#331BD96A" Offset="0"/><GradientStop Color="#001BD96A" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <ctl:BrandLogo Size="64" Logo="modrinth" Fallback="{StaticResource IconPackage}" Accent="#1BD96A" VerticalAlignment="Center" Margin="0,0,18,0"/>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Modrinth" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Готовые сборки .mrpack и моды из открытого каталога." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1A1BD96A" BorderBrush="#441BD96A" BorderThickness="1"><TextBlock Text="СКОРО" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandModrinth}"/></Border>
+      </Grid>
+     </Grid>
+    </Button>
+
+    <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource AccentBlue}" Command="{Binding ImportCommand}" Margin="0,0,14,0" BorderBrush="#26FFFFFF">
+     <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#2678C8FF" Offset="0"/><GradientStop Color="#101016" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
+     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <ctl:BrandLogo Size="64" Logo="import" Fallback="{StaticResource IconExternal}" Accent="#78C8FF" VerticalAlignment="Center" Margin="0,0,18,0"/>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Импорт" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Открой сборку Modrinth из файла .mrpack: моды скачаются сами." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+     </Grid>
+    </Button>
+
+    <Button Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource BrandCurseForge}" IsEnabled="False" BorderBrush="#55F16436">
+     <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#26F16436" Offset="0"/><GradientStop Color="#160F0D" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
+     <Grid><Ellipse Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-90,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#33F16436" Offset="0"/><GradientStop Color="#00F16436" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <ctl:BrandLogo Size="80" Logo="curseforge" Fallback="{StaticResource IconFlame}" Accent="#F16436" VerticalAlignment="Center" Margin="0,0,22,0"/>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="CurseForge" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Популярные модпаки и моды из крупнейшего каталога. Понадобится ключ API." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1AF16436" BorderBrush="#44F16436" BorderThickness="1"><TextBlock Text="СКОРО" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandCurseForge}"/></Border>
+      </Grid>
+     </Grid>
+    </Button>
+
+    <!-- Ход импорта .mrpack или причина, по которой он не удался -->
+    <Border Grid.Row="2" Grid.ColumnSpan="3" Margin="0,14,0,0" Padding="20,16" CornerRadius="18" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1"
+            Visibility="{Binding IsImportCardVisible, Converter={StaticResource BoolToVis}}">
+     <StackPanel>
+      <StackPanel Visibility="{Binding IsImporting, Converter={StaticResource BoolToVis}}">
+       <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Отмена" Style="{StaticResource SecondaryButton}" Padding="16,8" Command="{Binding CancelImportCommand}"/>
+        <TextBlock Text="{Binding ImportStatus}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+       </DockPanel>
+       <ProgressBar Style="{StaticResource LaunchProgressBar}" Value="{Binding ImportProgress, Mode=OneWay}" Margin="0,12,0,0"/>
+      </StackPanel>
+      <TextBlock Text="{Binding ImportError}" Foreground="#FF8A8A" TextWrapping="Wrap" FontSize="13" Visibility="{Binding HasImportError, Converter={StaticResource BoolToVis}}"/>
+     </StackPanel>
+    </Border>
+   </Grid>
+
+   <!-- Своя сборка: одна карточка — шапка, поля, подвал с кнопкой -->
+   <Border MaxWidth="820" HorizontalAlignment="Left" Background="#0B0B10" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="22" Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVis}}">
+    <Grid>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+     <DockPanel Margin="26,18,26,16">
+      <Button DockPanel.Dock="Right" Style="{StaticResource NavButton}" VerticalAlignment="Center" Command="{Binding BackCommand}" Content="Назад к списку"/>
+      <TextBlock Text="Новая сборка" FontSize="22" FontWeight="Black" VerticalAlignment="Center"/>
+     </DockPanel>
+     <Border Grid.Row="1" BorderBrush="#14FFFFFF" BorderThickness="0,1,0,0" Padding="26,20,26,8">
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+       <!-- Иконка сборки: пока показывает загрузчик (своя картинка появится позже) -->
+       <Grid Width="130" Height="130" VerticalAlignment="Top" Margin="0,0,22,0">
+        <Rectangle RadiusX="16" RadiusY="16" Stroke="#33FFFFFF" StrokeDashArray="4 4" StrokeThickness="1"/>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+         <ctl:LoaderTile Kind="{Binding SelectedLoader}" Size="56" HorizontalAlignment="Center"/>
+         <TextBlock Text="{Binding SelectedLoader}" Margin="0,10,0,0" HorizontalAlignment="Center" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+        </StackPanel>
+       </Grid>
+
+       <StackPanel Grid.Column="1">
+        <DockPanel Margin="0,0,0,8">
+         <TextBlock DockPanel.Dock="Right" Text="{Binding NameCounter}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+         <TextBlock Text="Название:" FontSize="13" FontWeight="SemiBold" Foreground="#D4D4D8"/>
+        </DockPanel>
+        <Grid Margin="0,0,0,16">
+         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="{Binding MaxNameLength, Mode=OneTime}" Height="40" Padding="12,9,36,9" Background="#111116" Foreground="White" CaretBrush="White" BorderBrush="#26FFFFFF"/>
+         <Button HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" Width="26" Height="26" Style="{StaticResource CloseButton}" Command="{Binding ClearNameCommand}" ToolTip="Очистить"
+                 Visibility="{Binding HasName, Converter={StaticResource BoolToVis}}"/>
+        </Grid>
+
+        <TextBlock Text="Загрузчик:" FontSize="13" FontWeight="SemiBold" Foreground="#D4D4D8" Margin="0,0,0,8"/>
+        <ListBox ItemsSource="{Binding Loaders}" SelectedItem="{Binding SelectedLoader}" ItemTemplate="{StaticResource LoaderSegTemplate}" Style="{StaticResource SegmentList}"/>
+        <TextBlock Text="{Binding LoaderHint}" Foreground="{StaticResource TextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="2,6,0,16"/>
+
+        <Grid Margin="0,0,0,4">
+         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+         <StackPanel>
+          <TextBlock Text="Версия игры:" FontSize="13" FontWeight="SemiBold" Foreground="#D4D4D8" Margin="0,0,0,8"/>
+          <ComboBox ItemsSource="{Binding McVersions}" SelectedItem="{Binding SelectedMcVersion}" Height="40"/>
+         </StackPanel>
+         <StackPanel Grid.Column="2" Visibility="{Binding HasLoaderVersions, Converter={StaticResource BoolToVis}}">
+          <TextBlock Text="Версия загрузчика:" FontSize="13" FontWeight="SemiBold" Foreground="#D4D4D8" Margin="0,0,0,8"/>
+          <ComboBox ItemsSource="{Binding LoaderBuilds}" SelectedItem="{Binding SelectedBuild}" Height="40" IsEnabled="{Binding IsLoadingBuilds, Converter={StaticResource InvBool}}">
+           <ComboBox.ItemTemplate>
+            <DataTemplate>
+             <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding Version}" VerticalAlignment="Center"/>
+              <Border Margin="10,0,0,0" Padding="8,2" CornerRadius="8" Background="#2210B981" Visibility="{Binding Stable, Converter={StaticResource BoolToVis}}">
+               <TextBlock Text="Стабильная" FontSize="11" FontWeight="SemiBold" Foreground="#6EE7B7"/>
+              </Border>
+             </StackPanel>
+            </DataTemplate>
+           </ComboBox.ItemTemplate>
+          </ComboBox>
+         </StackPanel>
+        </Grid>
+        <TextBlock Text="Загружаем версии загрузчика…" Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,6,0,0"
+                   Visibility="{Binding IsLoadingBuilds, Converter={StaticResource BoolToVis}}"/>
+        <TextBlock Text="{Binding BuildsNote}" Foreground="#FBBF24" FontSize="11.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                   Visibility="{Binding HasBuildsNote, Converter={StaticResource BoolToVis}}"/>
+        <TextBlock Text="Файлы игры и загрузчика скачаются при первом запуске." Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,14,0,10"/>
+       </StackPanel>
+      </Grid>
+     </Border>
+
+     <Border Grid.Row="2" BorderBrush="#14FFFFFF" BorderThickness="0,1,0,0" Padding="26,16">
+      <DockPanel>
+       <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Command="{Binding CreateCommand}">
+        <StackPanel Orientation="Horizontal">
+         <Viewbox Width="15" Height="15" Margin="0,0,8,0"><Canvas Width="24" Height="24"><Path Stroke="#0B0B10" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="{StaticResource IconPlus}"/></Canvas></Viewbox>
+         <TextBlock Text="{Binding CreateText}"/>
+        </StackPanel>
+       </Button>
+       <TextBlock Text="{Binding Status}" Foreground="#FF8A8A" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
+      </DockPanel>
+     </Border>
+    </Grid>
+   </Border>
+  </Grid>
  </DataTemplate>
 
  <!-- Сообщение: блоки текста и необязательная кнопка -->

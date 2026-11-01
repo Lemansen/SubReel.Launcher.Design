@@ -19,11 +19,13 @@ public sealed class NavigationService : ObservableObject
     public event EventHandler? VersionsOpened;
     public event EventHandler? VersionsClosed;
     public event EventHandler? NewsOpened;
+    public event EventHandler? BuildsOpened;
 
     public MainPage Page { get; private set; } = MainPage.Home;
     public bool IsVersionsOpen { get; private set; }
     public bool IsVersionPageOpen { get; private set; }
     public bool IsNewsOpen { get; private set; }
+    public bool IsBuildsOpen { get; private set; }
     public bool IsProfileMenuOpen { get; private set; }
     public bool IsVersionDropdownOpen { get; private set; }
     public OverlayViewModel? Overlay { get; private set; }
@@ -33,22 +35,22 @@ public sealed class NavigationService : ObservableObject
     public bool IsOverlayOpen => Overlay is not null;
 
     /// <summary>Шапка и подвал уезжают, а текст главной гаснет, пока открыт любой полноэкранный раздел.</summary>
-    public bool IsChromeHidden => IsOverlayOpen || IsVersionsOpen || IsNewsOpen;
+    public bool IsChromeHidden => IsOverlayOpen || IsVersionsOpen || IsNewsOpen || IsBuildsOpen;
 
     /// <summary>Насколько яркой должна быть картинка обновления на фоне.</summary>
-    public double HeroOpacity => IsVersionPageOpen ? 0.15 : IsVersionsOpen || IsNewsOpen ? 0.35 : 1;
+    public double HeroOpacity => IsVersionPageOpen ? 0.15 : IsVersionsOpen || IsNewsOpen || IsBuildsOpen ? 0.35 : 1;
 
     /// <summary>Индикатор «страниц» справа виден везде, кроме модальных окон и новостей.</summary>
-    public bool AreDotsVisible => !IsOverlayOpen && !IsNewsOpen;
+    public bool AreDotsVisible => !IsOverlayOpen && !IsNewsOpen && !IsBuildsOpen;
 
-    private bool TabsActive => !IsOverlayOpen && !IsNewsOpen;
+    private bool TabsActive => !IsOverlayOpen && !IsNewsOpen && !IsBuildsOpen;
     public bool IsHomeTabActive => TabsActive && Page == MainPage.Home;
     public bool IsCommunityTabActive => TabsActive && Page == MainPage.Community;
     public bool IsHubTabActive => TabsActive && Page == MainPage.Hub;
 
     /// <summary>Колесо мыши переключает «Главная ↔ Все версии» только когда ничего поверх не открыто.</summary>
     public bool CanSwitchModeByWheel =>
-        !(IsOverlayOpen || IsVersionPageOpen || IsProfileMenuOpen || IsVersionDropdownOpen || IsNewsOpen);
+        !(IsOverlayOpen || IsVersionPageOpen || IsProfileMenuOpen || IsVersionDropdownOpen || IsNewsOpen || IsBuildsOpen);
 
     // ───────────────────────── Страницы ─────────────────────────
 
@@ -66,7 +68,7 @@ public sealed class NavigationService : ObservableObject
 
     public bool EnterVersions()
     {
-        if (IsVersionsOpen || Page != MainPage.Home || IsNewsOpen || IsOverlayOpen) return false;
+        if (IsVersionsOpen || Page != MainPage.Home || IsNewsOpen || IsBuildsOpen || IsOverlayOpen) return false;
         IsVersionsOpen = true;
         VersionsOpened?.Invoke(this, EventArgs.Empty);
         Commit();
@@ -78,7 +80,7 @@ public sealed class NavigationService : ObservableObject
     {
         IsVersionDropdownOpen = false;
         Page = MainPage.Home;
-        if (!IsVersionsOpen && !IsNewsOpen && !IsOverlayOpen)
+        if (!IsVersionsOpen && !IsNewsOpen && !IsBuildsOpen && !IsOverlayOpen)
         {
             IsVersionsOpen = true;
             VersionsOpened?.Invoke(this, EventArgs.Empty);
@@ -114,7 +116,7 @@ public sealed class NavigationService : ObservableObject
 
     public bool OpenNews()
     {
-        if (IsNewsOpen || IsVersionsOpen || IsOverlayOpen) return false;
+        if (IsNewsOpen || IsVersionsOpen || IsBuildsOpen || IsOverlayOpen) return false;
         IsProfileMenuOpen = false;
         IsVersionDropdownOpen = false;
         IsNewsOpen = true;
@@ -127,6 +129,26 @@ public sealed class NavigationService : ObservableObject
     {
         if (!IsNewsOpen) return;
         IsNewsOpen = false;
+        Commit();
+    }
+
+    // ───────────────────────── Создание сборки ─────────────────────────
+
+    public bool OpenBuilds()
+    {
+        if (IsBuildsOpen || IsVersionsOpen || IsNewsOpen || IsOverlayOpen) return false;
+        IsProfileMenuOpen = false;
+        IsVersionDropdownOpen = false;
+        IsBuildsOpen = true;
+        BuildsOpened?.Invoke(this, EventArgs.Empty);
+        Commit();
+        return true;
+    }
+
+    public void CloseBuilds()
+    {
+        if (!IsBuildsOpen) return;
+        IsBuildsOpen = false;
         Commit();
     }
 
@@ -160,7 +182,7 @@ public sealed class NavigationService : ObservableObject
 
     public bool OpenVersionDropdown()
     {
-        if (IsVersionDropdownOpen || IsVersionsOpen || IsNewsOpen || IsOverlayOpen) return false;
+        if (IsVersionDropdownOpen || IsVersionsOpen || IsNewsOpen || IsBuildsOpen || IsOverlayOpen) return false;
         IsProfileMenuOpen = false;
         IsVersionDropdownOpen = true;
         VersionDropdownOpened?.Invoke(this, EventArgs.Empty);

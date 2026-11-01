@@ -17,6 +17,7 @@ public partial class MainWindow
     private bool _versionsOpen;
     private bool _pageOpen;
     private bool _newsOpen;
+    private bool _buildsOpen;
     private bool _chromeHidden;
     private bool _dotsVisible = true;
     private bool _dotsVersionsActive;
@@ -84,6 +85,13 @@ public partial class MainWindow
         {
             _newsOpen = nav.IsNewsOpen;
             if (_newsOpen) OpenNewsAnimated(); else CloseNewsAnimated();
+        }
+
+        // Создание сборки.
+        if (nav.IsBuildsOpen != _buildsOpen)
+        {
+            _buildsOpen = nav.IsBuildsOpen;
+            if (_buildsOpen) OpenBuildsAnimated(); else CloseBuildsAnimated();
         }
 
         ApplyChrome();

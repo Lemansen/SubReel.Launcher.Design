@@ -104,7 +104,8 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         var version = _store.SelectedVersion;
         if (string.IsNullOrEmpty(version)) return; // каталог версий ещё не загружен
 
-        var label = _store.VersionLabel;
+        var label = _store.RunLabel;
+        var instanceId = _store.SelectedInstance?.Id;
         var loader = _store.SelectedLoader;
         var loaderVersion = _store.SelectedLoaderVersion;
 
@@ -120,7 +121,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         {
             // Progress<T> доставляет отчёты в поток интерфейса, но с задержкой: запоздавший отчёт после старта игнорируется.
             var progress = new Progress<LaunchProgress>(ShowProgress);
-            var result = await _play.PlayAsync(new PlayRequest(version, loader, _accounts.Active, loaderVersion), progress, _lifetime.Token);
+            var result = await _play.PlayAsync(new PlayRequest(version, loader, _accounts.Active, loaderVersion, instanceId), progress, _lifetime.Token);
 
             if (result.Launch.Process is { } process)
             {
@@ -170,7 +171,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         PlayText = "ИГРА ЗАПУЩЕНА";
         Progress = 100;
         ProgressText = "100%";
-        StatusText = $"Minecraft {label} · запущена";
+        StatusText = $"{label} · запущена";
 
         process.StatusChanged += OnProcessStatusChanged;
         // Игра могла закрыться до подписки (мгновенный сбой): событие уже прошло.
@@ -200,7 +201,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
     {
         _nav.ShowOverlay(new MessageOverlayViewModel("Игра запущена", new[]
         {
-            new InfoBlockItem($"Minecraft {_runningLabel}", "Игра работает. Закрой её окно как обычно или останови отсюда: несохранённый прогресс в мире будет потерян."),
+            new InfoBlockItem(_runningLabel, "Игра работает. Закрой её окно как обычно или останови отсюда: несохранённый прогресс в мире будет потерян."),
         }, "Остановить игру", new RelayCommand(StopGame)));
     }
 
@@ -227,7 +228,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
 
     private void ShowFailure(LaunchResult launch, string label)
     {
-        _logger.LogWarning("Запуск Minecraft {Version} не удался: {Failure}: {Error}", label, launch.Failure, launch.Error);
+        _logger.LogWarning("Запуск «{Version}» не удался: {Failure}: {Error}", label, launch.Failure, launch.Error);
 
         if (launch.Failure == LaunchFailure.AlreadyRunning)
         {
@@ -239,6 +240,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         {
             LaunchFailure.UnsupportedLoader => ("Загрузчик пока не поддерживается", "Ваниль, Fabric, Quilt, Forge и NeoForge лаунчер запускает сам. Особые сборки (OptiFine, LabyMod и подобные) запустить из лаунчера пока нельзя: выбери другую версию в списке «Версия» в нижней панели."),
             LaunchFailure.LoaderNotReady => ("Не удалось подготовить загрузчик", "Проверь подключение к интернету и попробуй ещё раз. Если ошибка повторяется, выбери другую сборку загрузчика в списке «Версия»."),
+            LaunchFailure.InstanceUnavailable => ("Сборка недоступна", "Не удалось открыть папку сборки или сборка удалена. Выбери другую сборку или версию в списке «Версия» в нижней панели."),
             LaunchFailure.SignInRequired => ("Нужен вход", "Открой меню профиля и войди в аккаунт заново."),
             LaunchFailure.SignInFailed => ("Не удалось войти", "Проверь подключение к интернету и попробуй ещё раз."),
             LaunchFailure.FilesNotReady => ("Не удалось подготовить файлы", "Проверь подключение к интернету и свободное место на диске, затем попробуй ещё раз."),
@@ -248,7 +250,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
 
         _nav.ShowOverlay(new MessageOverlayViewModel(title, new[]
         {
-            new InfoBlockItem($"Minecraft {label}", launch.Error ?? "Причина неизвестна."),
+            new InfoBlockItem(label, launch.Error ?? "Причина неизвестна."),
             new InfoBlockItem("Что сделать", hint),
         }, "Понятно", new RelayCommand(_nav.CloseOverlay)));
     }

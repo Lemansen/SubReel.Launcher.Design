@@ -26,6 +26,12 @@ public sealed class LauncherSettings
     /// </summary>
     public string? SelectedInstallId { get; set; }
 
+    /// <summary>
+    /// Идентификатор (имя папки) сборки, выбранной вручную: созданной на странице «Создать сборку» или выбранной в разделе «Мои сборки» списка «Версия».
+    /// null — выбрана обычная версия, «Играть» запустит автосборку «Minecraft &lt;версия&gt;». Старые файлы настроек без поля читаются как null.
+    /// </summary>
+    public string? SelectedInstanceId { get; set; }
+
     /// <summary>Последние выбранные версии (новые первыми, не больше 6) — для строки «Недавние» на экране «Все версии».</summary>
     public List<string> RecentVersions { get; set; } = new();
 
