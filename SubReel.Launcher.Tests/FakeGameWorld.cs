@@ -31,7 +31,7 @@ internal sealed class FakeGameWorld : IDisposable
     public FakeGameWorld(bool virtualAssets = false)
     {
         Dir = new TempDir();
-        Paths = new AppPaths(Dir.Root, Dir.Root, Dir.Root);
+        Paths = new AppPaths(Dir.Root, Dir.Root);
         Layout = new GameFileLayout(Paths);
 
         BuildServer(virtualAssets);

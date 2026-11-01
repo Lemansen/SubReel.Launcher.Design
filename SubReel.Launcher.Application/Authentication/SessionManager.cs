@@ -11,7 +11,7 @@ namespace SubReel.Launcher.Application.Authentication;
 /// Удаление аккаунта (откуда бы оно ни вызывалось) стирает его токены из хранилища.
 /// В журнал попадают только ники и причины сбоев — никогда токены.
 /// </summary>
-public sealed class SessionManager : IDisposable
+public sealed class SessionManager : IGameSessionSource, IDisposable
 {
     /// <summary>За сколько до истечения токен считается устаревшим.</summary>
     public static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);

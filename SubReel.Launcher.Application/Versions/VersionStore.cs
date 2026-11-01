@@ -43,6 +43,15 @@ public sealed class VersionStore
     public bool CatalogLoaded { get; private set; }
     public string SelectedVersion { get; private set; } = "";
     public InstalledVersion? SelectedInstall { get; private set; }
+
+    /// <summary>
+    /// Загрузчик выбранной версии: у установленной версии — её загрузчик, у сборки Fabric или Quilt, которой ещё нет на диске
+    /// (выбрана из раздела «Доступно для установки»), — загрузчик из её имени. Иначе ваниль.
+    /// </summary>
+    public LoaderKind SelectedLoader { get; private set; } = LoaderKind.Vanilla;
+
+    /// <summary>Версия загрузчика выбранной версии; у ванили и у особых сборок без разобранной версии — null.</summary>
+    public string? SelectedLoaderVersion { get; private set; }
     public IReadOnlyList<InstalledVersion> Installed { get; private set; } = Array.Empty<InstalledVersion>();
     public string GameDirectory { get; private set; }
     public bool GameDirectoryFound { get; private set; } = true;
@@ -57,8 +66,8 @@ public sealed class VersionStore
         get
         {
             if (string.IsNullOrEmpty(SelectedVersion)) return "…";
-            return SelectedInstall is { Loader: not LoaderKind.Vanilla } install
-                ? $"{SelectedVersion} · {(install.Loader == LoaderKind.Other ? "особая" : LoaderInfo.Name(install.Loader))}"
+            return SelectedLoader != LoaderKind.Vanilla
+                ? $"{SelectedVersion} · {(SelectedLoader == LoaderKind.Other ? "особая" : LoaderInfo.Name(SelectedLoader))}"
                 : SelectedVersion;
         }
     }
@@ -71,6 +80,7 @@ public sealed class VersionStore
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         if (_settings.Current.SelectedVersion is { Length: > 0 } saved) SelectedVersion = saved;
+        ApplySelectedLoader(); // подпись «1.21.1 · Fabric» нужна сразу, не дожидаясь сканирования папки
         Changed?.Invoke(this, EventArgs.Empty);
 
         // Установленные версии ищем параллельно с загрузкой каталога: оба шага работают в фоне.
@@ -162,6 +172,32 @@ public sealed class VersionStore
         SelectedInstall = _settings.Current.SelectedInstallId is { Length: > 0 } id
             ? Installed.FirstOrDefault(i => i.Id == id)
             : Installed.FirstOrDefault(i => i.Loader == LoaderKind.Vanilla && i.McVersion == SelectedVersion);
+        ApplySelectedLoader();
+    }
+
+    /// <summary>
+    /// Определяет загрузчик выбранной версии. Выбранная сборка Fabric или Quilt, которой нет в папке игры, хранится в настройках
+    /// именем профиля (<see cref="LauncherSettings.SelectedInstallId"/>), а загрузчик и его версия читаются из этого имени.
+    /// </summary>
+    private void ApplySelectedLoader()
+    {
+        if (SelectedInstall is { } install)
+        {
+            SelectedLoader = install.Loader;
+            SelectedLoaderVersion = install.LoaderVersion;
+            return;
+        }
+
+        if (LoaderInfo.TryParseProfileId(_settings.Current.SelectedInstallId) is { } profile
+            && string.Equals(profile.McVersion, SelectedVersion, StringComparison.Ordinal))
+        {
+            SelectedLoader = profile.Kind;
+            SelectedLoaderVersion = profile.LoaderVersion;
+            return;
+        }
+
+        SelectedLoader = LoaderKind.Vanilla;
+        SelectedLoaderVersion = null;
     }
 
     // ───────────────────────── Выбор ─────────────────────────
@@ -169,17 +205,42 @@ public sealed class VersionStore
     /// <summary>Единая точка выбора версии. install — конкретная установленная версия (Fabric/Forge/…) из выпадающего списка.</summary>
     public void Select(string id, InstalledVersion? install = null)
     {
-        SelectedVersion = id;
-        _settings.Current.SelectedVersion = id;
-
         // Выбор по номеру — ваниль, если она установлена.
-        SelectedInstall = install ?? Installed.FirstOrDefault(i => i.Loader == LoaderKind.Vanilla && i.McVersion == id);
-        _settings.Current.SelectedInstallId = SelectedInstall?.Id;
+        var chosen = install ?? Installed.FirstOrDefault(i => i.Loader == LoaderKind.Vanilla && i.McVersion == id);
+        Commit(id, chosen, chosen?.Id);
+    }
+
+    /// <summary>
+    /// Выбор сборки загрузчика из раздела «Доступно для установки». Если её профиль уже есть среди установленных в папке игры,
+    /// выбирается он; иначе запоминается имя профиля, и лаунчер поставит сборку при первом запуске.
+    /// </summary>
+    public void SelectLoader(LoaderBuild build)
+    {
+        ArgumentNullException.ThrowIfNull(build);
+
+        var profileId = build.ProfileId;
+        var installed = Installed.FirstOrDefault(i => string.Equals(i.Id, profileId, StringComparison.Ordinal));
+        if (installed is not null)
+        {
+            Select(build.McVersion, installed);
+            return;
+        }
+
+        Commit(build.McVersion, null, profileId);
+    }
+
+    private void Commit(string mcVersion, InstalledVersion? install, string? installId)
+    {
+        SelectedVersion = mcVersion;
+        _settings.Current.SelectedVersion = mcVersion;
+        SelectedInstall = install;
+        _settings.Current.SelectedInstallId = installId;
+        ApplySelectedLoader();
 
         // «Недавние»: новые первыми, без повторов, не больше 6.
         var recent = _settings.Current.RecentVersions;
-        recent.Remove(id);
-        recent.Insert(0, id);
+        recent.Remove(mcVersion);
+        recent.Insert(0, mcVersion);
         if (recent.Count > 6) recent.RemoveRange(6, recent.Count - 6);
         _settings.Save();
 

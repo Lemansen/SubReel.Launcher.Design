@@ -52,7 +52,7 @@ public sealed class BoolToStringConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
-/// <summary>Значение перечисления → его имя строчными буквами (для триггеров стиля по Tag: «loading», «ready»).</summary>
+/// <summary>Значение перечисления → его имя строчными буквами (для триггеров стиля по Tag: «loading», «running»).</summary>
 public sealed class EnumToTagConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value?.ToString()?.ToLowerInvariant();

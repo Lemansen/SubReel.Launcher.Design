@@ -121,6 +121,48 @@
   </Border>
  </DataTemplate>
 
+ <!-- Раздел «Доступно для установки»: заголовок и сборки загрузчиков, которых ещё нет в папке игры -->
+ <DataTemplate DataType="{x:Type vm:SectionHeaderRowViewModel}">
+  <TextBlock Text="{Binding Title}" Margin="8,14,0,6" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+ </DataTemplate>
+
+ <DataTemplate DataType="{x:Type vm:AvailableLoaderRowViewModel}">
+  <Border CornerRadius="12" BorderThickness="1" Margin="0,1">
+   <Border.Style>
+    <Style TargetType="Border">
+     <Setter Property="BorderBrush" Value="Transparent"/>
+     <Style.Triggers>
+      <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="BorderBrush" Value="#888B5CF6"/></DataTrigger>
+     </Style.Triggers>
+    </Style>
+   </Border.Style>
+   <Button Command="{Binding PickCommand}" Padding="8,7,12,7">
+    <Button.Style>
+     <Style TargetType="Button" BasedOn="{StaticResource MenuItemButton}">
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#1F8B5CF6"/></DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </Button.Style>
+    <Grid>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <ctl:LoaderTile Kind="{Binding Kind}" Size="34"/>
+     <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+      <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+      <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+     </StackPanel>
+     <!-- Справа: у выбранной — галочка, у остальных — подсказка, что файлы скачаются при запуске -->
+     <Grid Grid.Column="2" VerticalAlignment="Center">
+      <Viewbox Width="16" Height="16" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
+       <Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas>
+      </Viewbox>
+      <TextBlock Text="Скачать" FontSize="11" Foreground="{StaticResource TextMuted}" Visibility="{Binding IsSelected, Converter={StaticResource InvBoolToVis}}"/>
+     </Grid>
+    </Grid>
+   </Button>
+  </Border>
+ </DataTemplate>
+
  <!-- ===== Страница версии ===== -->
  <DataTemplate DataType="{x:Type vm:PageChipViewModel}">
   <Button Style="{StaticResource ChipButtonBlue}" Command="{Binding PickCommand}" MinWidth="104" Height="50" Padding="12,0" Margin="0,0,8,8">

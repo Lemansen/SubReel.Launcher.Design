@@ -37,7 +37,7 @@ public sealed class ProtectedFileTokenStoreTests
     private const string RefreshToken = "refresh-token-SECRET-123";
 
     private static ProtectedFileTokenStore CreateStore(TempDir dir, ISecretProtector? protector = null) =>
-        new(new AppPaths(dir.Root, dir.Root, dir.Root), protector ?? new FakeSecretProtector(), NullLogger<ProtectedFileTokenStore>.Instance);
+        new(new AppPaths(dir.Root, dir.Root), protector ?? new FakeSecretProtector(), NullLogger<ProtectedFileTokenStore>.Instance);
 
     private static StoredCredentials Sample() => new()
     {
@@ -48,7 +48,7 @@ public sealed class ProtectedFileTokenStoreTests
         SkinUrl = "https://textures.example/skin.png",
     };
 
-    private static string FileFor(TempDir dir, string profileId = ProfileId) => Path.Combine(dir.Root, "auth", profileId + ".bin");
+    private static string FileFor(TempDir dir, string profileId = ProfileId) => Path.Combine(dir.Root, "launcher", "auth", profileId + ".bin");
 
     [Fact]
     public void Saved_credentials_are_loaded_back_unchanged()
@@ -91,7 +91,7 @@ public sealed class ProtectedFileTokenStoreTests
         store.Save(ProfileId, new StoredCredentials { RefreshToken = "second" });
 
         Assert.Equal("second", store.Load(ProfileId)!.RefreshToken);
-        Assert.Empty(Directory.GetFiles(Path.Combine(dir.Root, "auth"), "*.tmp"));
+        Assert.Empty(Directory.GetFiles(Path.Combine(dir.Root, "launcher", "auth"), "*.tmp"));
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class ProtectedFileTokenStoreTests
     {
         using var dir = new TempDir();
         var store = CreateStore(dir);
-        Directory.CreateDirectory(Path.Combine(dir.Root, "auth"));
+        Directory.CreateDirectory(Path.Combine(dir.Root, "launcher", "auth"));
         File.WriteAllBytes(FileFor(dir), Array.Empty<byte>());
 
         Assert.Null(store.Load(ProfileId));
@@ -214,7 +214,7 @@ public sealed class ProtectedFileTokenStoreTests
         Assert.Null(store.Load(profileId));
         Assert.False(store.Exists(profileId));
         store.Delete(profileId);
-        Assert.False(Directory.Exists(Path.Combine(dir.Root, "auth")));
+        Assert.False(Directory.Exists(Path.Combine(dir.Root, "launcher", "auth")));
     }
 
     [Fact]
@@ -236,7 +236,7 @@ public sealed class ProtectedFileTokenStoreTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<ISecretProtector>(new FakeSecretProtector());
-        services.AddSubReelInfrastructure(new AppPaths(dir.Root, dir.Root, dir.Root));
+        services.AddSubReelInfrastructure(new AppPaths(dir.Root, dir.Root));
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<ProtectedFileTokenStore>(provider.GetRequiredService<ITokenStore>());

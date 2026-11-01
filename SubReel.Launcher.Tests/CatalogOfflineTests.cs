@@ -38,7 +38,7 @@ public sealed class CatalogOfflineTests
     }
 
     private static MojangVersionCatalogService Create(TempDir dir, SwitchableHandler handler) =>
-        new(new HttpClient(handler), NullLogger<MojangVersionCatalogService>.Instance, new AppPaths(dir.Root, dir.Root, dir.Root));
+        new(new HttpClient(handler), NullLogger<MojangVersionCatalogService>.Instance, new AppPaths(dir.Root, dir.Root));
 
     [Fact]
     public async Task Successful_load_saves_copy_and_is_not_stale()
@@ -48,8 +48,8 @@ public sealed class CatalogOfflineTests
 
         Assert.False(catalog.IsOffline);
         Assert.False(catalog.IsStale);
-        Assert.True(File.Exists(Path.Combine(dir.Root, "cache", "version_manifest.json")));
-        Assert.True(File.Exists(Path.Combine(dir.Root, "cache", "patch_notes.json")));
+        Assert.True(File.Exists(Path.Combine(new AppPaths(dir.Root, dir.Root).CacheDirectory, "version_manifest.json")));
+        Assert.True(File.Exists(Path.Combine(new AppPaths(dir.Root, dir.Root).CacheDirectory, "patch_notes.json")));
     }
 
     [Fact]
@@ -84,8 +84,8 @@ public sealed class CatalogOfflineTests
     public async Task Corrupted_copy_falls_back_to_builtin_catalog()
     {
         using var dir = new TempDir();
-        Directory.CreateDirectory(Path.Combine(dir.Root, "cache"));
-        File.WriteAllText(Path.Combine(dir.Root, "cache", "version_manifest.json"), "{ это не json");
+        Directory.CreateDirectory(new AppPaths(dir.Root, dir.Root).CacheDirectory);
+        File.WriteAllText(Path.Combine(new AppPaths(dir.Root, dir.Root).CacheDirectory, "version_manifest.json"), "{ это не json");
 
         var catalog = await Create(dir, new SwitchableHandler { Online = false }).LoadAsync();
 
@@ -104,7 +104,7 @@ public sealed class CatalogOfflineTests
 
         Assert.False(catalog.IsStale); // список версий свежий
         Assert.NotNull(catalog.ImageFor("1.21")); // а картинки — из сохранённых патчноутов
-        Assert.True(File.Exists(Path.Combine(dir.Root, "cache", "patch_notes.json")));
+        Assert.True(File.Exists(Path.Combine(new AppPaths(dir.Root, dir.Root).CacheDirectory, "patch_notes.json")));
     }
 
     // ───────────── VersionStore: обновление после появления сети ─────────────

@@ -3,11 +3,14 @@ using SubReel.Launcher.Application.Downloads;
 using SubReel.Launcher.Application.Games;
 using SubReel.Launcher.Application.Instances;
 using SubReel.Launcher.Application.Java;
+using SubReel.Launcher.Application.Loaders;
 using SubReel.Launcher.Minecraft.Downloads;
 using SubReel.Launcher.Minecraft.Installation;
 using SubReel.Launcher.Minecraft.Instances;
 using SubReel.Launcher.Minecraft.Java;
+using SubReel.Launcher.Minecraft.Launching;
 using SubReel.Launcher.Minecraft.Layout;
+using SubReel.Launcher.Minecraft.Loaders;
 using SubReel.Launcher.Minecraft.Versions;
 
 namespace SubReel.Launcher.Minecraft;
@@ -48,6 +51,11 @@ public static class MinecraftServiceCollectionExtensions
         services.AddSingleton<IGameInstaller, GameInstaller>();
         services.AddSingleton<INativesExtractor, NativesExtractor>();
 
+        // Загрузчики (фаза 10): список сборок и профили Fabric и Quilt с их мета-серверов.
+        services.AddSingleton(LoaderEndpoints.Default);
+        services.AddSingleton<ILoaderCatalog, LoaderCatalog>();
+        services.AddSingleton<ILoaderInstaller, LoaderInstaller>();
+
         // Java Manager: источники папок Java (каждый добавляет своих кандидатов), чтение версии, рантаймы Mojang.
         services.AddSingleton<IJavaHomeSource, JavaHomeEnvironmentSource>();
         services.AddSingleton<IJavaHomeSource, KnownFoldersJavaSource>();
@@ -56,6 +64,20 @@ public static class MinecraftServiceCollectionExtensions
         services.AddSingleton<JavaVersionReader>();
         services.AddSingleton<ManagedJavaInstaller>();
         services.AddSingleton<IJavaManager, JavaManager>();
+        return services;
+    }
+
+    /// <summary>
+    /// Запуск игры (фаза 9). Отдельный вызов, потому что нужен <c>IGameSessionSource</c> — его даёт <c>AddSubReelAuthentication</c>:
+    /// без входа и менеджера сессий запускать игру нечем. Вызывается после <see cref="AddSubReelMinecraft"/> и AddSubReelAuthentication.
+    /// </summary>
+    public static IServiceCollection AddSubReelGameLauncher(this IServiceCollection services)
+    {
+        services.AddSingleton<ClasspathBuilder>();
+        services.AddSingleton<LegacyAssetsPreparer>();
+        services.AddSingleton<IGameProcessStarter, SystemGameProcessStarter>();
+        services.AddSingleton<IGameLauncher, GameLauncher>();
+        services.AddSingleton<GamePlayService>();
         return services;
     }
 }

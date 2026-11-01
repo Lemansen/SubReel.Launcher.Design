@@ -7,6 +7,7 @@ using SubReel.Launcher.Application.Downloads;
 using SubReel.Launcher.Application.Games;
 using SubReel.Launcher.Application.Instances;
 using SubReel.Launcher.Application.Java;
+using SubReel.Launcher.Application.Loaders;
 using SubReel.Launcher.Application.News;
 using SubReel.Launcher.Application.Versions;
 using SubReel.Launcher.Infrastructure;
@@ -28,7 +29,7 @@ public sealed class CompositionTests
         services.AddLogging();
         services.AddOptions<NewsOptions>();
         services
-            .AddSubReelInfrastructure(new AppPaths(dir.Root, dir.Root, dir.Root))
+            .AddSubReelInfrastructure(new AppPaths(dir.Root, dir.Root))
             .AddSubReelApplication()
             .AddSubReelMinecraft();
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -56,6 +57,8 @@ public sealed class CompositionTests
         Assert.NotNull(provider.GetRequiredService<IVersionMetadataProvider>());
         Assert.NotNull(provider.GetRequiredService<INativesExtractor>());
         Assert.NotNull(provider.GetRequiredService<IJavaManager>());
+        Assert.NotNull(provider.GetRequiredService<ILoaderCatalog>());
+        Assert.NotNull(provider.GetRequiredService<ILoaderInstaller>());
     }
 
     [Fact]

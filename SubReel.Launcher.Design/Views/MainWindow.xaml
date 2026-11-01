@@ -438,7 +438,7 @@
               Visibility="{Binding VersionDropdown.ShowMissingNotice, Converter={StaticResource BoolToVis}}">
        <StackPanel>
         <TextBlock Text="{Binding VersionDropdown.MissingNoticeText}" FontSize="12.5" FontWeight="SemiBold" Foreground="#FBBF24" TextTrimming="CharacterEllipsis"/>
-        <TextBlock Text="Запустить её пока нельзя. Выбери одну из установленных версий ниже. Установка версий появится вместе с игровым ядром."
+        <TextBlock Text="Это не помеха: лаунчер сам скачает нужные файлы в свой кэш при первом запуске."
                    FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" Margin="0,3,0,0"/>
        </StackPanel>
       </Border>
@@ -468,7 +468,7 @@
         <Viewbox Width="16" Height="16" Margin="8,0,12,0"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconLayers}"/></Canvas></Viewbox>
         <StackPanel VerticalAlignment="Center">
          <TextBlock Text="Все версии Minecraft" FontSize="14" FontWeight="SemiBold"/>
-         <TextBlock Text="Каталог релизов · установка появится позже" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
+         <TextBlock Text="Каталог релизов · файлы скачаются при запуске" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
         </StackPanel>
        </StackPanel>
       </Button>

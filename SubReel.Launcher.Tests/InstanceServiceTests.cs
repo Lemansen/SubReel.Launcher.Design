@@ -11,7 +11,7 @@ public sealed class InstanceServiceTests
 {
     private static (InstanceService Service, ManualTimeProvider Time, JsonInstanceRepository Repo) Create(TempDir dir)
     {
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
         var repo = new JsonInstanceRepository(paths, new JsonFileStore(NullLogger<JsonFileStore>.Instance), NullLogger<JsonInstanceRepository>.Instance);
         var time = new ManualTimeProvider();
         return (new InstanceService(repo, time, NullLogger<InstanceService>.Instance), time, repo);

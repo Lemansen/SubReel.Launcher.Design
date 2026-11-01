@@ -21,6 +21,7 @@ public static class AuthenticationServiceCollectionExtensions
 
         services.AddSingleton<IAccountProvider>(provider => provider.GetRequiredService<MicrosoftAccountProvider>());
         services.AddSingleton<SessionManager>();
+        services.AddSingleton<IGameSessionSource>(provider => provider.GetRequiredService<SessionManager>());
         return services;
     }
 }

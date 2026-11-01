@@ -6,14 +6,14 @@ namespace SubReel.Launcher.Tests;
 
 public sealed class GameFileLayoutTests
 {
-    private static GameFileLayout Create(TempDir dir) => new(new AppPaths(dir.Root, dir.Root, dir.Root));
+    private static GameFileLayout Create(TempDir dir) => new(new AppPaths(dir.Root, dir.Root));
 
     [Fact]
     public void Builds_expected_shared_cache_paths()
     {
         using var dir = new TempDir();
         var layout = Create(dir);
-        var root = Path.Combine(dir.Root, "game");
+        var root = Path.Combine(dir.Root, "shared", "game");
         var hash = "ab" + new string('c', 38);
 
         Assert.Equal(Path.Combine(root, "versions", "1.21.1", "1.21.1.json"), layout.VersionJsonPath("1.21.1"));

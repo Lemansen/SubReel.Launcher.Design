@@ -10,7 +10,7 @@ public sealed class JsonInstanceRepositoryTests
 {
     private static (JsonInstanceRepository Repo, AppPaths Paths) Create(TempDir dir)
     {
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
         return (new JsonInstanceRepository(paths, new JsonFileStore(NullLogger<JsonFileStore>.Instance), NullLogger<JsonInstanceRepository>.Instance), paths);
     }
 
@@ -96,7 +96,7 @@ public sealed class JsonInstanceRepositoryTests
         ghost.Id = "ghost";
 
         Assert.False(await repo.UpdateAsync(ghost));
-        Assert.False(Directory.Exists(Path.Combine(dir.Root, "instances", "ghost")));
+        Assert.False(Directory.Exists(Path.Combine(dir.Root, "profiles", "ghost")));
     }
 
     [Fact]

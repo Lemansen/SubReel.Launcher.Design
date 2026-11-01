@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SubReel.Launcher.Application;
+using SubReel.Launcher.Application.Abstractions;
 using SubReel.Launcher.Application.Downloads;
 using SubReel.Launcher.Authentication;
 using SubReel.Launcher.Application.Java;
@@ -36,7 +37,10 @@ public partial class App : System.Windows.Application
 
         try
         {
-            var paths = new AppPaths();
+            // Папка данных определяется и (если пользователь её сменил или это первый запуск после обновления) переносится
+            // до создания журнала и любых файлов данных. Что было сделано, пишем в журнал чуть ниже.
+            var location = DataLocationService.StartDefault();
+            var paths = new AppPaths(location.CurrentRoot);
             // Корень содержимого — папка с exe, а не текущая папка процесса: иначе appsettings.json не находится,
             // если лаунчер запущен ярлыком с другой рабочей папкой.
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
@@ -55,16 +59,19 @@ public partial class App : System.Windows.Application
             builder.Services.AddOptions<DownloadOptions>().BindConfiguration(DownloadOptions.SectionName);
             builder.Services.AddOptions<JavaOptions>().BindConfiguration(JavaOptions.SectionName);
             builder.Services.AddOptions<AuthenticationOptions>().BindConfiguration(AuthenticationOptions.SectionName);
+            builder.Services.AddSingleton<IDataLocationService>(location);
             builder.Services
                 .AddSubReelInfrastructure(paths)
                 .AddSubReelApplication()
                 .AddSubReelMinecraft()
                 .AddSubReelAuthentication()
+                .AddSubReelGameLauncher()
                 .AddSubReelPresentation();
 
             _host = builder.Build();
             _logger = _host.Services.GetRequiredService<ILogger<App>>();
-            _logger.LogInformation("SubReel Launcher запускается.");
+            _logger.LogInformation("SubReel Launcher запускается. Папка данных: {Root}.", paths.Root);
+            foreach (var note in location.StartupNotes) _logger.LogInformation("Папка данных: {Note}", note);
 
             _host.Start();
             RenderingServices.Initialize(_host.Services.GetRequiredService<IImageService>(), _logger);

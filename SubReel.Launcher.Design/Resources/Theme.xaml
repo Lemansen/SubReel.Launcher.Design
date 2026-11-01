@@ -329,7 +329,7 @@
    </Setter>
   </Style>
 
-  <!-- .play-btn: Tag="loading" → серая кнопка, Tag="ready" → свечение (как .loading-state / .ready-state) -->
+  <!-- .play-btn: Tag="loading" → серая кнопка, Tag="running" → свечение (игра запущена; как .loading-state / .ready-state) -->
   <Style x:Key="PlayButton" TargetType="Button">
    <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
    <Setter Property="Foreground" Value="#000000"/>
@@ -350,7 +350,7 @@
         <Setter TargetName="Bd" Property="RenderTransform"><Setter.Value><TranslateTransform Y="-2"/></Setter.Value></Setter>
         <Setter TargetName="Bd" Property="Effect"><Setter.Value><DropShadowEffect Color="#4C85FF" Direction="270" ShadowDepth="8" BlurRadius="24" Opacity="0.35"/></Setter.Value></Setter>
        </Trigger>
-       <Trigger Property="Tag" Value="ready">
+       <Trigger Property="Tag" Value="running">
         <Setter TargetName="Bd" Property="Effect"><Setter.Value><DropShadowEffect Color="#78C8FF" Direction="270" ShadowDepth="8" BlurRadius="30" Opacity="0.4"/></Setter.Value></Setter>
        </Trigger>
        <Trigger Property="Tag" Value="loading">

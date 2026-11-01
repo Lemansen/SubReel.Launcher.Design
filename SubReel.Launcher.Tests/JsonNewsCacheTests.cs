@@ -10,7 +10,7 @@ public sealed class JsonNewsCacheTests
 {
     private static JsonNewsCache Create(TempDir dir, out AppPaths paths)
     {
-        paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        paths = new AppPaths(dir.Root, dir.Root);
         return new JsonNewsCache(paths, new JsonFileStore(NullLogger<JsonFileStore>.Instance), NullLogger<JsonNewsCache>.Instance);
     }
 

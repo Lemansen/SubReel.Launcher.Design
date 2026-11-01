@@ -7,7 +7,7 @@ namespace SubReel.Launcher.Infrastructure.Versions;
 /// <summary>Определяет по папке <c>versions\&lt;id&gt;</c>, что за версия установлена: ваниль, Fabric, Forge, NeoForge, Quilt или другая сборка.</summary>
 public static class InstalledVersionParser
 {
-    private static readonly Regex FabricQuiltLoader = new(@"^(?:fabric|quilt)-loader-(?<v>\d[\w.]*?)-(?=\d)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex FabricQuiltLoader = new(@"^(?:fabric|quilt)-loader-(?<v>\d[\w.]*(?:-[A-Za-z][\w.]*)?)-(?=\d)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex NeoForgeVersion = new(@"neoforge-?(?<v>\d[\w.+\-]*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex ForgeVersion = new(@"forge-?(?:\d+(?:\.\d+)+-)?(?<v>\d+(?:\.\d+)+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex LeadingMc = new(@"^\d+\.\d+(?:\.\d+)?", RegexOptions.Compiled);

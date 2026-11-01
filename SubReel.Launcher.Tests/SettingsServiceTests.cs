@@ -10,7 +10,7 @@ public sealed class SettingsServiceTests
 {
     private static SettingsService Create(TempDir dir, out AppPaths paths)
     {
-        paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        paths = new AppPaths(dir.Root, dir.Root);
         return new SettingsService(paths, new JsonFileStore(NullLogger<JsonFileStore>.Instance), NullLogger<SettingsService>.Instance);
     }
 
@@ -40,7 +40,8 @@ public sealed class SettingsServiceTests
     public void Legacy_file_without_schema_version_keeps_all_user_data_and_is_migrated()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
+        Directory.CreateDirectory(paths.LauncherDirectory);
         File.WriteAllText(paths.SettingsFile, LegacyJson);
 
         var service = Create(dir, out _);
@@ -80,14 +81,15 @@ public sealed class SettingsServiceTests
     public void Corrupt_file_starts_with_defaults_and_keeps_original_aside()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
+        Directory.CreateDirectory(paths.LauncherDirectory);
         File.WriteAllText(paths.SettingsFile, "{oops");
 
         var service = Create(dir, out _);
         service.Save();
 
         Assert.Equal("Gamer", service.Current.ActiveAccount);
-        var aside = Assert.Single(Directory.GetFiles(dir.Root, "design-settings.json.corrupt-*"));
+        var aside = Assert.Single(Directory.GetFiles(paths.LauncherDirectory, "design-settings.json.corrupt-*"));
         Assert.Equal("{oops", File.ReadAllText(aside));
         Assert.True(File.Exists(paths.SettingsFile));
     }
@@ -96,8 +98,9 @@ public sealed class SettingsServiceTests
     public void Settings_from_newer_launcher_are_never_overwritten()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
         const string newer = """{"SchemaVersion": 99, "SelectedVersion": "x", "FutureField": 1}""";
+        Directory.CreateDirectory(paths.LauncherDirectory);
         File.WriteAllText(paths.SettingsFile, newer);
 
         var service = Create(dir, out _);

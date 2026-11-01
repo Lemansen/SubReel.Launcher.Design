@@ -99,6 +99,14 @@
    <TextBlock Text="{Binding RamLabel}" Foreground="{StaticResource AccentLight}" Margin="0,0,0,18"/>
    <CheckBox Content="Автоматически обновлять лаунчер" IsChecked="{Binding AutoUpdate}" Foreground="White" Margin="0,0,0,15"/>
    <CheckBox Content="Закрывать лаунчер после запуска игры" IsChecked="{Binding CloseAfterLaunch}" Foreground="White" Margin="0,0,0,15"/>
+   <ctl:InfoBlock Title="Папка данных" Detail="Здесь лежат настройки, файлы игры, Java и сборки. По умолчанию — одна и та же для всех; можно выбрать другой диск."/>
+   <TextBlock Text="{Binding DataFolderPath}" Foreground="{StaticResource AccentLight}" TextWrapping="Wrap" Margin="0,8,0,10"/>
+   <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+    <Button Content="Выбрать папку..." Style="{StaticResource SecondaryButton}" MinWidth="140" Margin="0,0,10,0" Command="{Binding PickFolderCommand}"/>
+    <Button Content="По умолчанию" Style="{StaticResource SecondaryButton}" MinWidth="140" Command="{Binding ResetFolderCommand}"/>
+   </StackPanel>
+   <TextBlock Text="{Binding PendingText}" Foreground="White" TextWrapping="Wrap" Margin="0,0,0,18"
+              Visibility="{Binding HasPending, Converter={StaticResource BoolToVis}}"/>
    <ctl:InfoBlock Title="Оформление" Detail="Тёмная тема · синие акценты · мягкие свечения"/>
    <ctl:InfoBlock Title="О лаунчере" Detail=".NET 10 · WPF · MVVM"/>
   </StackPanel>

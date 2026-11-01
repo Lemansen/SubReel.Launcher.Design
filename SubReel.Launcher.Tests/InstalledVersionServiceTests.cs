@@ -8,7 +8,7 @@ namespace SubReel.Launcher.Tests;
 public sealed class InstalledVersionServiceTests
 {
     private static InstalledVersionService Create(TempDir dir) =>
-        new(new AppPaths(dir.Root, dir.Root, dir.Root), NullLogger<InstalledVersionService>.Instance);
+        new(new AppPaths(dir.Root, dir.Root), NullLogger<InstalledVersionService>.Instance);
 
     private static void AddVersion(TempDir dir, string id, string json, bool withJar = false)
     {
@@ -68,5 +68,19 @@ public sealed class InstalledVersionServiceTests
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Create(dir).ScanAsync(dir.Root, cts.Token));
+    }
+
+    [Fact]
+    public async Task Beta_loader_versions_are_read_from_the_profile_name()
+    {
+        using var dir = new TempDir();
+        AddVersion(dir, "quilt-loader-0.27.0-beta.1-1.21.1", """{"inheritsFrom":"1.21.1","mainClass":"org.quiltmc.loader.impl.launch.knot.KnotClient"}""");
+
+        var result = await Create(dir).ScanAsync(dir.Root);
+
+        var quilt = Assert.Single(result.Versions);
+        Assert.Equal(LoaderKind.Quilt, quilt.Loader);
+        Assert.Equal("0.27.0-beta.1", quilt.LoaderVersion);
+        Assert.Equal("1.21.1", quilt.McVersion);
     }
 }

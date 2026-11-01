@@ -9,7 +9,7 @@ public sealed class DiskImageCacheTests
     private static readonly byte[] Png = { 1, 2, 3, 4 };
 
     private static DiskImageCache Create(TempDir dir, StubHandler handler) =>
-        new(new StubHttpClientFactory(handler), new AppPaths(dir.Root, dir.Root, dir.Root), NullLogger<DiskImageCache>.Instance);
+        new(new StubHttpClientFactory(handler), new AppPaths(dir.Root, dir.Root), NullLogger<DiskImageCache>.Instance);
 
     [Fact]
     public async Task Downloads_once_then_serves_from_disk()

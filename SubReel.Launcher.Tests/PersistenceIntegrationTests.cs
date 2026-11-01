@@ -25,7 +25,7 @@ public sealed class PersistenceIntegrationTests
     public async Task First_run_then_pick_version_then_restart_keeps_selection_and_recent_list()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
 
         // Первый запуск: файла нет, версия не выбрана.
         var first = OpenStore(OpenSettings(paths));
@@ -48,7 +48,7 @@ public sealed class PersistenceIntegrationTests
     public async Task Selected_loader_install_survives_restart()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
         var fabric = new InstalledVersion { Id = "fabric-loader-0.16.0-1.21.1", McVersion = "1.21.1", Loader = LoaderKind.Fabric };
         FakeInstalledService Installed() => new()
         {
@@ -71,7 +71,7 @@ public sealed class PersistenceIntegrationTests
     public void Accounts_and_cosmetics_survive_restart()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
 
         var accounts = new AccountService(OpenSettings(paths));
         Assert.True(accounts.AddAndActivate("Alex_7"));
@@ -91,8 +91,9 @@ public sealed class PersistenceIntegrationTests
     public void Saving_after_a_corrupt_file_never_destroys_the_original()
     {
         using var dir = new TempDir();
-        var paths = new AppPaths(dir.Root, dir.Root, dir.Root);
+        var paths = new AppPaths(dir.Root, dir.Root);
         const string garbage = "{ \"Accounts\": [ { \"Name\": \"Steve_01\" ";
+        Directory.CreateDirectory(paths.LauncherDirectory);
         File.WriteAllText(paths.SettingsFile, garbage);
 
         // Запуск с повреждённым файлом, затем обычное действие пользователя, которое вызывает Save().
@@ -100,7 +101,7 @@ public sealed class PersistenceIntegrationTests
         Assert.True(accounts.AddAndActivate("Nova_1"));
 
         // Новые настройки записаны, а исходный повреждённый файл лежит рядом нетронутым.
-        var kept = Directory.GetFiles(dir.Root, "design-settings.json.corrupt-*");
+        var kept = Directory.GetFiles(paths.LauncherDirectory, "design-settings.json.corrupt-*");
         Assert.Single(kept);
         Assert.Equal(garbage, File.ReadAllText(kept[0]));
         Assert.Equal("Nova_1", new AccountService(OpenSettings(paths)).Active.Name);

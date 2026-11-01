@@ -1,4 +1,6 @@
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
+using SubReel.Launcher.Application.Loaders;
 
 namespace SubReel.Launcher.Design.ViewModels;
 
@@ -45,11 +47,56 @@ public sealed class InstalledVersionRowViewModel
     public ICommand PickCommand { get; }
 }
 
-/// <summary>Кнопка «Версия» в подвале и выпадающий список установленных версий над ней.</summary>
-public sealed class VersionDropdownViewModel : ObservableObject
+/// <summary>Заголовок раздела списка («Доступно для установки · Minecraft 1.21.1»).</summary>
+public sealed class SectionHeaderRowViewModel
 {
+    public SectionHeaderRowViewModel(string title) => Title = title;
+
+    public string Title { get; }
+}
+
+/// <summary>Сборка загрузчика, которой ещё нет в папке игры: её можно выбрать, лаунчер поставит её при первом запуске.</summary>
+public sealed class AvailableLoaderRowViewModel
+{
+    public AvailableLoaderRowViewModel(LoaderBuild build, bool isSelected, Action<LoaderBuild> pick)
+    {
+        Build = build;
+        IsSelected = isSelected;
+        PickCommand = new RelayCommand(() => pick(build));
+        Kind = build.Kind;
+        Title = $"{LoaderInfo.Name(build.Kind)} {build.Version}";
+        Detail = build.Stable ? $"Minecraft {build.McVersion}" : $"Minecraft {build.McVersion} · бета";
+    }
+
+    public LoaderBuild Build { get; }
+    public LoaderKind Kind { get; }
+    public string Title { get; }
+    public string Detail { get; }
+    public bool IsSelected { get; }
+    public ICommand PickCommand { get; }
+}
+
+/// <summary>
+/// Кнопка «Версия» в подвале и выпадающий список над ней: установленные версии из папки игры и сборки загрузчиков (Fabric, Quilt),
+/// доступные для выбранной версии Minecraft. Вторые подгружаются с мета-серверов при открытии списка; нет сети — берётся сохранённая копия,
+/// нет и её — раздел просто не показывается.
+/// </summary>
+public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
+{
+    /// <summary>Сколько новых сборок каждого загрузчика показывать: список не должен превращаться в каталог на сотни строк.</summary>
+    private const int MaxOffersPerLoader = 3;
+
+    private static readonly LoaderKind[] OfferedLoaders = { LoaderKind.Fabric, LoaderKind.Quilt };
+
     private readonly VersionStore _store;
     private readonly NavigationService _nav;
+    private readonly ILoaderCatalog _catalog;
+    private readonly ILogger<VersionDropdownViewModel> _logger;
+    private readonly CancellationTokenSource _lifetime = new();
+
+    private IReadOnlyList<LoaderBuild> _available = Array.Empty<LoaderBuild>();
+    private string _availableFor = "";
+    private int _availableToken;
 
     private IReadOnlyList<object> _rows = Array.Empty<object>();
     private string _statusText = "";
@@ -58,10 +105,12 @@ public sealed class VersionDropdownViewModel : ObservableObject
     private bool _showEmptyState;
     private string _emptyHint = "";
 
-    public VersionDropdownViewModel(VersionStore store, NavigationService nav)
+    public VersionDropdownViewModel(VersionStore store, NavigationService nav, ILoaderCatalog catalog, ILogger<VersionDropdownViewModel> logger)
     {
         _store = store;
         _nav = nav;
+        _catalog = catalog;
+        _logger = logger;
         ToggleCommand = new RelayCommand(nav.ToggleVersionDropdown);
         ShowAllCommand = new RelayCommand(nav.OpenAllVersions);
 
@@ -76,7 +125,14 @@ public sealed class VersionDropdownViewModel : ObservableObject
             BuildRows();
             // Список мог измениться за пределами лаунчера — перечитываем папку в фоне; готовый результат перерисует список.
             _store.RefreshInstalled();
+            RefreshAvailable();
         };
+    }
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
     }
 
     public ICommand ToggleCommand { get; }
@@ -92,7 +148,7 @@ public sealed class VersionDropdownViewModel : ObservableObject
     public bool IsSelectedInstalled => _store.SelectedInstall is not null;
 
     public string? StatusToolTip => !ShowStatusDot ? null
-        : IsSelectedInstalled ? "Версия установлена" : "Версия не установлена — запустить её пока нельзя";
+        : IsSelectedInstalled ? "Версия установлена" : "Нет в папке .minecraft — лаунчер скачает файлы при первом запуске";
 
     private void RaiseButtonChanged()
     {
@@ -128,9 +184,9 @@ public sealed class VersionDropdownViewModel : ObservableObject
             ? "Нет установленных версий"
             : $"{installed.Count} {TextHelpers.Plural(installed.Count, "версия установлена", "версии установлены", "версий установлено")}";
 
-        // Выбранная версия не установлена: говорим об этом прямо, а не выдаём её за готовую к запуску.
+        // Выбранной версии нет в папке игры: это не помеха (файлы лаунчер скачает сам при первом запуске), но говорим об этом прямо.
         ShowMissingNotice = _store.SelectedInstall is null && !string.IsNullOrEmpty(_store.SelectedVersion);
-        MissingNoticeText = $"Выбрана {_store.VersionLabel} — не установлена";
+        MissingNoticeText = $"Выбрана {_store.VersionLabel} — нет в папке игры";
 
         ShowEmptyState = installed.Count == 0;
         EmptyHint = _store.GameDirectoryFound
@@ -144,12 +200,77 @@ public sealed class VersionDropdownViewModel : ObservableObject
             foreach (var version in group)
                 rows.Add(new InstalledVersionRowViewModel(version, _store.SelectedInstall?.Id == version.Id, PickInstalled));
         }
+
+        AddOffers(rows, installed);
         Rows = rows;
     }
+
+    /// <summary>Сборки загрузчиков для выбранной версии игры, которых ещё нет в папке игры.</summary>
+    private void AddOffers(List<object> rows, IReadOnlyList<InstalledVersion> installed)
+    {
+        if (!string.Equals(_availableFor, _store.SelectedVersion, StringComparison.Ordinal)) return;
+
+        var installedIds = installed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+        var offers = _available.Where(b => !installedIds.Contains(b.ProfileId)).ToList();
+        if (offers.Count == 0) return;
+
+        rows.Add(new SectionHeaderRowViewModel($"ДОСТУПНО ДЛЯ УСТАНОВКИ · MINECRAFT {_store.SelectedVersion}"));
+        foreach (var build in offers) rows.Add(new AvailableLoaderRowViewModel(build, IsSelectedOffer(build), PickAvailable));
+    }
+
+    private bool IsSelectedOffer(LoaderBuild build) =>
+        _store.SelectedInstall is null
+        && _store.SelectedLoader == build.Kind
+        && string.Equals(_store.SelectedLoaderVersion, build.Version, StringComparison.Ordinal)
+        && string.Equals(_store.SelectedVersion, build.McVersion, StringComparison.Ordinal);
 
     private void PickInstalled(InstalledVersion version)
     {
         _store.Select(version.McVersion, version);
         _nav.CloseVersionDropdown();
+    }
+
+    private void PickAvailable(LoaderBuild build)
+    {
+        _store.SelectLoader(build);
+        _nav.CloseVersionDropdown();
+    }
+
+    // ───────────────────────── Сборки загрузчиков ─────────────────────────
+
+    private void RefreshAvailable()
+    {
+        var mcVersion = _store.SelectedVersion;
+        if (string.IsNullOrEmpty(mcVersion)) return;
+
+        var token = ++_availableToken;
+        LoadAvailableAsync(mcVersion, token, _lifetime.Token).FireAndForget(_logger, "список сборок загрузчиков");
+    }
+
+    private async Task LoadAvailableAsync(string mcVersion, int token, CancellationToken ct)
+    {
+        var results = await Task.WhenAll(OfferedLoaders.Select(kind => FetchBuildsAsync(kind, mcVersion, ct)));
+
+        // За время запроса список закрыли и открыли снова (или выбрали другую версию): результат уже не нужен.
+        if (token != _availableToken) return;
+
+        _available = results.SelectMany(builds => builds).ToList();
+        _availableFor = mcVersion;
+        if (_nav.IsVersionDropdownOpen) BuildRows();
+    }
+
+    private async Task<IReadOnlyList<LoaderBuild>> FetchBuildsAsync(LoaderKind kind, string mcVersion, CancellationToken ct)
+    {
+        try
+        {
+            var builds = await _catalog.GetBuildsAsync(kind, mcVersion, ct);
+            return builds.Take(MaxOffersPerLoader).ToList();
+        }
+        catch (LoaderCatalogException ex)
+        {
+            // Нет сети и нет копии: раздел загрузчика просто не показывается, ошибкой это не считается.
+            _logger.LogInformation("Сборки {Loader} для Minecraft {Version} недоступны: {Reason}", kind, mcVersion, ex.Message);
+            return Array.Empty<LoaderBuild>();
+        }
     }
 }

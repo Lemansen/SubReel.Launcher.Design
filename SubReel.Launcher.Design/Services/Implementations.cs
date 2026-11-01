@@ -48,6 +48,15 @@ public sealed class DialogService : IDialogService
         var accepted = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
         return accepted == true ? dialog.FileName : null;
     }
+
+    public string? PickFolder(string title, string? initialDirectory = null)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = title };
+        if (!string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory)) dialog.InitialDirectory = initialDirectory;
+        var owner = System.Windows.Application.Current?.MainWindow;
+        var accepted = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+        return accepted == true ? dialog.FolderName : null;
+    }
 }
 
 public sealed class BrowserService : IBrowserService

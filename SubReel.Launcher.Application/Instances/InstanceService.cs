@@ -68,10 +68,17 @@ public sealed class InstanceService
             instance.JavaPath = string.IsNullOrWhiteSpace(javaPath) ? null : javaPath.Trim();
         }, ct).ConfigureAwait(false);
 
+    /// <summary>Запоминает, с какой версией загрузчика сборка запускалась в последний раз. У ванили версии загрузчика нет.</summary>
+    public async Task<InstanceOperationResult> SetLoaderVersionAsync(string id, string? loaderVersion, CancellationToken ct = default) =>
+        await ChangeAsync(id, instance => instance.LoaderVersion = instance.Loader == LoaderKind.Vanilla ? null : loaderVersion, ct).ConfigureAwait(false);
+
     public async Task<InstanceOperationResult> MarkPlayedAsync(string id, CancellationToken ct = default) =>
         await ChangeAsync(id, instance => instance.LastPlayedUtc = _time.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
 
     public Task<bool> DeleteAsync(string id, CancellationToken ct = default) => _repository.DeleteAsync(id, ct);
+
+    /// <summary>Папка игры экземпляра (saves, mods, options.txt). Только вычисляет путь.</summary>
+    public string GetGameDirectory(string id) => _repository.GetGameDirectory(id);
 
     private async Task<InstanceOperationResult> ChangeAsync(string id, Action<Instance> change, CancellationToken ct)
     {

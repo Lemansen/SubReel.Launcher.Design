@@ -14,6 +14,9 @@ public interface IDialogService
 {
     /// <summary>Путь к выбранной картинке или null, если диалог закрыли.</summary>
     string? PickImageFile();
+
+    /// <summary>Путь к выбранной папке или null, если диалог закрыли.</summary>
+    string? PickFolder(string title, string? initialDirectory = null);
 }
 
 /// <summary>Открытие ссылок во внешнем браузере. Разрешены только http/https.</summary>

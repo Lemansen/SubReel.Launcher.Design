@@ -26,7 +26,7 @@ internal sealed class FakeJavaWorld : IDisposable
     public FakeJavaWorld(string releaseVersion = "21.0.3", string? evilPath = null)
     {
         Dir = new TempDir();
-        Paths = new AppPaths(Dir.Root, Dir.Root, Dir.Root);
+        Paths = new AppPaths(Dir.Root, Dir.Root);
         BuildServer(releaseVersion, evilPath);
 
         Handler = new AsyncStubHandler((request, _) =>
