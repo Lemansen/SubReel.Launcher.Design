@@ -126,8 +126,6 @@ public sealed class GamePlayServiceTests
     }
 
     [Theory]
-    [InlineData(LoaderKind.Forge)]
-    [InlineData(LoaderKind.NeoForge)]
     [InlineData(LoaderKind.Other)]
     public async Task Loader_without_an_installer_is_refused_without_creating_a_build(LoaderKind loader)
     {

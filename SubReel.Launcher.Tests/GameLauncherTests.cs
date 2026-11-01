@@ -196,8 +196,6 @@ public sealed class GameLauncherTests
     }
 
     [Theory]
-    [InlineData(LoaderKind.Forge)]
-    [InlineData(LoaderKind.NeoForge)]
     [InlineData(LoaderKind.Other)]
     public async Task Loaders_without_an_installer_are_not_launched_as_vanilla(LoaderKind loader)
     {

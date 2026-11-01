@@ -7,7 +7,7 @@ using SubReel.Launcher.Minecraft.Layout;
 namespace SubReel.Launcher.Minecraft.Loaders;
 
 /// <summary>
-/// Список сборок Fabric и Quilt для версии игры. Ответ мета-сервера лежит на диске (<c>loaders/&lt;загрузчик&gt;/&lt;версия&gt;.json</c> в общем кэше игры):
+/// Список сборок Fabric и Quilt (мета-серверы) и Forge и NeoForge (maven-metadata.xml) для версии игры. Ответ мета-сервера лежит на диске (<c>loaders/&lt;загрузчик&gt;/&lt;версия&gt;.json</c> в общем кэше игры):
 /// свежий файл (моложе 30 минут) используется как есть, иначе обновляется; нет сети — берётся устаревший; нет и его — <see cref="LoaderCatalogException"/>.
 /// Так же работает список версий Mojang (<c>VersionManifestSource</c>), поэтому выпадающий список без сети показывает то, что уже видели.
 /// </summary>
@@ -92,6 +92,11 @@ public sealed class LoaderCatalog : ILoaderCatalog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { throw new LoaderCatalogException($"Не удалось прочитать сохранённый каталог {LoaderInfo.Name(kind)}.", ex); }
+        catch (LoaderCatalogException)
+        {
+            TryDelete(path); // битый XML убираем, чтобы следующий запрос скачал каталог заново
+            throw;
+        }
     }
 
     private async Task RefreshAsync(LoaderKind kind, string mcVersion, string path, CancellationToken ct)

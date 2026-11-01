@@ -164,14 +164,60 @@ public sealed class LoaderCatalogTests
     }
 
     [Fact]
-    public async Task Loaders_without_a_meta_server_give_an_empty_list_without_requests()
+    public async Task Loaders_that_cannot_be_installed_give_an_empty_list_without_requests()
     {
         using var meta = new FakeLoaderMeta();
 
-        var builds = await meta.Catalog.GetBuildsAsync(LoaderKind.Forge, "1.21.1");
+        var builds = await meta.Catalog.GetBuildsAsync(LoaderKind.Vanilla, "1.21.1");
 
         Assert.Empty(builds);
         Assert.Equal(0, meta.TotalRequests);
+    }
+
+    [Fact]
+    public async Task Forge_builds_come_from_maven_metadata_and_are_kept_on_disk()
+    {
+        using var meta = new FakeLoaderMeta();
+        var url = meta.Endpoints.ForgeBuildListUrl;
+        meta.Serve(url, LoaderMavenParserTests.ForgeXml("1.21.1-52.0.0", "1.21.1-52.0.2", "1.20.1-47.2.0"));
+
+        var builds = await meta.Catalog.GetBuildsAsync(LoaderKind.Forge, "1.21.1");
+        await meta.Catalog.GetBuildsAsync(LoaderKind.Forge, "1.20.1");
+
+        Assert.Equal(new[] { "52.0.2", "52.0.0" }, builds.Select(b => b.Version).ToArray());
+        Assert.Equal(1, meta.Count(url)); // второй вызов взял свежую копию
+    }
+
+    [Fact]
+    public async Task NeoForge_builds_come_from_maven_metadata()
+    {
+        using var meta = new FakeLoaderMeta();
+        meta.Serve(meta.Endpoints.NeoForgeBuildListUrl, LoaderMavenParserTests.ForgeXml("21.0.5", "21.1.172", "21.1.3"));
+
+        var builds = await meta.Catalog.GetBuildsAsync(LoaderKind.NeoForge, "1.21.1");
+
+        Assert.Equal(new[] { "21.1.172", "21.1.3" }, builds.Select(b => b.Version).ToArray());
+    }
+
+    [Fact]
+    public async Task Maven_catalog_without_network_and_copy_is_a_catalog_error()
+    {
+        using var meta = new FakeLoaderMeta();
+
+        await Assert.ThrowsAsync<LoaderCatalogException>(() => meta.Catalog.GetBuildsAsync(LoaderKind.NeoForge, "1.21.1"));
+    }
+
+    [Fact]
+    public async Task Corrupt_maven_copy_is_removed()
+    {
+        using var meta = new FakeLoaderMeta();
+        var path = meta.Layout.LoaderBuildsPath(LoaderKind.Forge, "maven-metadata");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(path, "<not xml");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow); // свежая: сеть не нужна
+
+        await Assert.ThrowsAsync<LoaderCatalogException>(() => meta.Catalog.GetBuildsAsync(LoaderKind.Forge, "1.21.1"));
+        Assert.False(File.Exists(path));
     }
 
     [Fact]
@@ -336,7 +382,9 @@ public sealed class LoaderInstallerTests
     }
 
     [Theory]
-    [InlineData(LoaderKind.Forge, Mc, "47.2.0")]
+    [InlineData(LoaderKind.Vanilla, Mc, "47.2.0")]
+    [InlineData(LoaderKind.Forge, Mc, "47.2.0")] // без Java Manager современный установщик не запускается, и скачивать его незачем
+    [InlineData(LoaderKind.NeoForge, Mc, "21.1.172")]
     [InlineData(LoaderKind.Fabric, Mc, "../x")]
     [InlineData(LoaderKind.Fabric, "a/b", "0.16.5")]
     [InlineData(LoaderKind.Fabric, "", "0.16.5")]

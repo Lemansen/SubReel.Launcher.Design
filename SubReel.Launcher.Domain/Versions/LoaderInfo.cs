@@ -48,15 +48,38 @@ public static class LoaderInfo
         _ => throw new NotSupportedException($"Профиль загрузчика {Name(kind)} не строится по имени: его создаёт установщик."),
     };
 
-    /// <summary>Обратное к <see cref="ProfileId"/>. null — имя не похоже на профиль Fabric или Quilt.</summary>
+    // 1.21.1-forge-52.0.0, 1.12.2-forge-14.23.5.2860
+    private static readonly Regex ForgeProfileIdPattern = new(
+        @"^(?<mc>\d[\w.\-]*?)-forge-(?<v>\d[\w.+\-]*)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    // neoforge-21.1.172, neoforge-21.1.0-beta
+    private static readonly Regex NeoForgeProfileIdPattern = new(
+        @"^neoforge-(?<v>\d[\w.+\-]*)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Обратное к <see cref="ProfileId"/>. null — имя не похоже на профиль известного загрузчика.
+    /// У NeoForge версия игры в имени профиля не записана, поэтому <see cref="LoaderProfileRef.McVersion"/> там null.
+    /// </summary>
     public static LoaderProfileRef? TryParseProfileId(string? id)
     {
         if (string.IsNullOrWhiteSpace(id)) return null;
-        var match = ProfileIdPattern.Match(id);
-        if (!match.Success) return null;
 
-        var kind = string.Equals(match.Groups["kind"].Value, "quilt", StringComparison.OrdinalIgnoreCase) ? LoaderKind.Quilt : LoaderKind.Fabric;
-        return new LoaderProfileRef(kind, match.Groups["v"].Value, match.Groups["mc"].Value);
+        var match = ProfileIdPattern.Match(id);
+        if (match.Success)
+        {
+            var kind = string.Equals(match.Groups["kind"].Value, "quilt", StringComparison.OrdinalIgnoreCase) ? LoaderKind.Quilt : LoaderKind.Fabric;
+            return new LoaderProfileRef(kind, match.Groups["v"].Value, match.Groups["mc"].Value);
+        }
+
+        match = ForgeProfileIdPattern.Match(id);
+        if (match.Success) return new LoaderProfileRef(LoaderKind.Forge, match.Groups["v"].Value, match.Groups["mc"].Value);
+
+        match = NeoForgeProfileIdPattern.Match(id);
+        if (match.Success) return new LoaderProfileRef(LoaderKind.NeoForge, match.Groups["v"].Value, null);
+
+        return null;
     }
 }
 
@@ -68,5 +91,5 @@ public sealed record LoaderBuild(LoaderKind Kind, string McVersion, string Versi
     public string ProfileId => LoaderInfo.ProfileId(Kind, McVersion, Version);
 }
 
-/// <summary>Что записано в имени профиля загрузчика: загрузчик, его версия и версия игры.</summary>
-public sealed record LoaderProfileRef(LoaderKind Kind, string LoaderVersion, string McVersion);
+/// <summary>Что записано в имени профиля загрузчика: загрузчик, его версия и версия игры (у NeoForge её в имени нет — null).</summary>
+public sealed record LoaderProfileRef(LoaderKind Kind, string LoaderVersion, string? McVersion);

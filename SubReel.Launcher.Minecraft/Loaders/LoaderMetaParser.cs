@@ -58,7 +58,9 @@ public static class LoaderMetaParser
     public static IReadOnlyList<LoaderBuild> ParseNeoForgeBuilds(string xml, string mcVersion)
     {
         if (!IsSafeVersionText(mcVersion)) return Array.Empty<LoaderBuild>();
-        var prefix = (mcVersion.StartsWith("1.", StringComparison.Ordinal) ? mcVersion[2..] : mcVersion) + ".";
+        // 1.21 → «21.0.», 1.21.1 → «21.1.», 26.1 → «26.1.»: без нуля игра 1.21 подхватила бы сборки 1.21.1 и новее.
+        if (!TryParseRelease(mcVersion, out var major, out var minor)) return Array.Empty<LoaderBuild>();
+        var prefix = $"{major}.{minor}.";
         try
         {
             var versions = XDocument.Parse(xml).Descendants("version")
@@ -80,7 +82,7 @@ public static class LoaderMetaParser
     /// <summary>Forge Maven versions use the combined form &lt;minecraft&gt;-&lt;forge&gt;; the installer route depends on the game version.</summary>
     public static IReadOnlyList<LoaderBuild> ParseForgeBuilds(string xml, string mcVersion)
     {
-        if (!IsSafeVersionText(mcVersion)) return Array.Empty<LoaderBuild>();
+        if (!IsSafeVersionText(mcVersion) || !IsForgeSupportedGame(mcVersion)) return Array.Empty<LoaderBuild>();
         var prefix = mcVersion + "-";
         try
         {
@@ -100,11 +102,43 @@ public static class LoaderMetaParser
         }
     }
 
-    public static bool IsForgeModernVersion(string version)
+    /// <summary>
+    /// Разбор номера релиза игры: <c>1.20.4</c> → (20, 4), <c>1.20</c> → (20, 0), <c>26.1</c> → (26, 1).
+    /// Снапшоты вроде <c>24w14a</c> не разбираются (false). Суффикс после «-» (<c>1.21.1-pre1</c>) отбрасывается.
+    /// </summary>
+    public static bool TryParseRelease(string? mcVersion, out int major, out int minor)
     {
-        var text = version.StartsWith("1.", StringComparison.Ordinal) ? version[2..] : version;
-        return Version.TryParse(text, out var parsed) && (parsed.Major > 13 || parsed.Major == 13);
+        major = 0;
+        minor = 0;
+        if (string.IsNullOrEmpty(mcVersion)) return false;
+
+        var parts = mcVersion.Split('-', 2)[0].Split('.');
+        if (!int.TryParse(parts[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var first)) return false;
+
+        if (first == 1)
+        {
+            if (parts.Length < 2 || !int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out major)) return false;
+            if (parts.Length > 2) int.TryParse(parts[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out minor);
+            return true;
+        }
+
+        major = first;
+        if (parts.Length > 1) int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out minor);
+        return true;
     }
+
+    /// <summary>
+    /// Forge, который лаунчер умеет ставить: Minecraft 1.12.2 и новее. У более старых профиль без <c>inheritsFrom</c>,
+    /// а библиотеки лежат вне <c>maven/</c> установщика. Неразбираемые версии (снапшоты) считаются подходящими.
+    /// </summary>
+    public static bool IsForgeSupportedGame(string mcVersion) =>
+        !TryParseRelease(mcVersion, out var major, out var minor) || major > 12 || major == 12 && minor >= 2;
+
+    /// <summary>
+    /// Forge для этой <b>версии игры</b> ставится современным установщиком (1.13 и новее, включая год-формат 26.x и неразбираемые снапшоты).
+    /// Раньше здесь был <c>Version.TryParse</c>: на «1.20» (одно число после «1.») он давал false, и Forge 1.13–1.20 уходил в ветку старого Forge.
+    /// </summary>
+    public static bool IsForgeModernVersion(string mcVersion) => !TryParseRelease(mcVersion, out var major, out _) || major >= 13;
 
     private sealed class MavenVersionComparer : IComparer<string>
     {

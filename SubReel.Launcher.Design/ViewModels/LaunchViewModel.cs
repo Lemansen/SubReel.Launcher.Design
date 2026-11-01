@@ -237,7 +237,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
 
         var (title, hint) = launch.Failure switch
         {
-            LaunchFailure.UnsupportedLoader => ("Загрузчик пока не поддерживается", "Fabric и Quilt лаунчер запускает сам. Forge, NeoForge и особые сборки появятся следующим шагом: пока выбери ваниль, Fabric или Quilt в списке «Версия» в нижней панели."),
+            LaunchFailure.UnsupportedLoader => ("Загрузчик пока не поддерживается", "Ваниль, Fabric, Quilt, Forge и NeoForge лаунчер запускает сам. Особые сборки (OptiFine, LabyMod и подобные) запустить из лаунчера пока нельзя: выбери другую версию в списке «Версия» в нижней панели."),
             LaunchFailure.LoaderNotReady => ("Не удалось подготовить загрузчик", "Проверь подключение к интернету и попробуй ещё раз. Если ошибка повторяется, выбери другую сборку загрузчика в списке «Версия»."),
             LaunchFailure.SignInRequired => ("Нужен вход", "Открой меню профиля и войди в аккаунт заново."),
             LaunchFailure.SignInFailed => ("Не удалось войти", "Проверь подключение к интернету и попробуй ещё раз."),

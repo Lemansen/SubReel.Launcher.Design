@@ -80,7 +80,7 @@ public sealed class GameLauncher : IGameLauncher
         if (string.IsNullOrWhiteSpace(request.VersionId)) throw new ArgumentException("Не указана версия игры.", nameof(request));
         if (string.IsNullOrWhiteSpace(request.GameDirectory)) throw new ArgumentException("Не указана папка игры.", nameof(request));
 
-        // Fabric и Quilt — обычная версия с inheritsFrom, профиль которой уже в кэше (его кладёт GamePlayService); Forge и NeoForge — следующий шаг фазы 10.
+        // Fabric, Quilt, Forge и NeoForge — обычная версия с inheritsFrom, профиль которой уже в кэше (его кладёт GamePlayService через ILoaderInstaller).
         if (request.Loader != LoaderKind.Vanilla && !LoaderInfo.CanInstall(request.Loader))
             return LaunchResult.Fail(LaunchFailure.UnsupportedLoader, $"Запуск с загрузчиком {LoaderInfo.Name(request.Loader)} пока не поддерживается.");
 

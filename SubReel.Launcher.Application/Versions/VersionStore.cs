@@ -176,7 +176,7 @@ public sealed class VersionStore
     }
 
     /// <summary>
-    /// Определяет загрузчик выбранной версии. Выбранная сборка Fabric или Quilt, которой нет в папке игры, хранится в настройках
+    /// Определяет загрузчик выбранной версии. Выбранная сборка Fabric, Quilt, Forge или NeoForge, которой нет в папке игры, хранится в настройках
     /// именем профиля (<see cref="LauncherSettings.SelectedInstallId"/>), а загрузчик и его версия читаются из этого имени.
     /// </summary>
     private void ApplySelectedLoader()
@@ -189,7 +189,7 @@ public sealed class VersionStore
         }
 
         if (LoaderInfo.TryParseProfileId(_settings.Current.SelectedInstallId) is { } profile
-            && string.Equals(profile.McVersion, SelectedVersion, StringComparison.Ordinal))
+            && (profile.McVersion is null || string.Equals(profile.McVersion, SelectedVersion, StringComparison.Ordinal)))
         {
             SelectedLoader = profile.Kind;
             SelectedLoaderVersion = profile.LoaderVersion;

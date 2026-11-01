@@ -142,6 +142,26 @@ public sealed class VersionStoreTests
         Assert.Equal("1.21.1 · Fabric", restarted.VersionLabel);
     }
 
+    [Theory]
+    [InlineData(LoaderKind.Forge, "52.0.0", "1.21.1-forge-52.0.0")]
+    [InlineData(LoaderKind.NeoForge, "21.1.172", "neoforge-21.1.172")]
+    public async Task Forge_and_neoforge_choice_is_not_lost_and_survives_a_restart(LoaderKind kind, string loaderVersion, string profileId)
+    {
+        var settings = new FakeSettingsService();
+        var store = Create(settings);
+
+        store.SelectLoader(new LoaderBuild(kind, "1.21.1", loaderVersion, true));
+
+        Assert.Equal(profileId, settings.Current.SelectedInstallId);
+        Assert.Equal((kind, loaderVersion), (store.SelectedLoader, store.SelectedLoaderVersion));
+
+        var restarted = Create(settings);
+        await restarted.InitializeAsync();
+        await restarted.ScanTask;
+
+        Assert.Equal((kind, loaderVersion), (restarted.SelectedLoader, restarted.SelectedLoaderVersion));
+    }
+
     [Fact]
     public async Task Loader_build_found_in_the_game_folder_is_selected_as_installed()
     {

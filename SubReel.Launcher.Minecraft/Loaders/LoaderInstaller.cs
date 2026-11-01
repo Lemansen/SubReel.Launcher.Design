@@ -79,6 +79,9 @@ public sealed class LoaderInstaller : ILoaderInstaller
                 return LoaderInstallResult.Failure(ex.Message);
             }
 
+            if (kind == LoaderKind.Forge && !LoaderMetaParser.IsForgeSupportedGame(mcVersion))
+                return LoaderInstallResult.Failure($"Forge для Minecraft {mcVersion} лаунчер не устанавливает: поддерживаются версии от 1.12.2.");
+
             if (kind is LoaderKind.NeoForge or LoaderKind.Forge)
             {
                 if (IsUsableProfile(path, mcVersion)) return LoaderInstallResult.Success(id, loaderVersion);
@@ -108,15 +111,24 @@ public sealed class LoaderInstaller : ILoaderInstaller
             Directory.CreateDirectory(Path.GetDirectoryName(installerPath)!);
             if (!File.Exists(installerPath))
             {
-                var downloaded = await _downloads.DownloadAsync(new DownloadRequest(_endpoints.ForgeInstallerUrl(mcVersion, loaderVersion), tempInstaller), null, ct).ConfigureAwait(false);
-                if (!downloaded.Succeeded) return LoaderInstallResult.Failure($"Не удалось скачать установщик Forge {loaderVersion}: {downloaded.Error}");
+                var downloadError = await DownloadInstallerAsync(_endpoints.ForgeInstallerUrl(mcVersion, loaderVersion), tempInstaller, ct).ConfigureAwait(false);
+                if (downloadError is not null) return LoaderInstallResult.Failure($"Не удалось скачать установщик Forge {loaderVersion}: {downloadError}");
                 File.Move(tempInstaller, installerPath, overwrite: true);
             }
 
-            using var archive = ZipFile.OpenRead(installerPath);
+            ZipArchive archive;
+            try { archive = ZipFile.OpenRead(installerPath); }
+            catch (InvalidDataException)
+            {
+                TryDelete(installerPath); // битый файл в кэше: при следующей попытке скачается заново
+                return LoaderInstallResult.Failure($"Установщик Forge {loaderVersion} повреждён и удалён из кэша — повтори попытку.");
+            }
+            using var archiveScope = archive;
             var profileJson = await ReadLegacyVersionJsonAsync(archive, ct).ConfigureAwait(false);
             if (profileJson is null) return LoaderInstallResult.Failure("В установщике старого Forge не найден version.json или versionInfo.");
             var metadata = VersionMetadataParser.Parse(profileJson);
+            if (string.IsNullOrWhiteSpace(metadata.InheritsFrom))
+                return LoaderInstallResult.Failure($"Forge {loaderVersion} для Minecraft {mcVersion} — самый старый формат (до 1.12.2): профиль без inheritsFrom и библиотеки вне maven/ установщика пока не поддерживаются.");
             if (!string.Equals(metadata.Id, id, StringComparison.Ordinal) || !string.Equals(metadata.InheritsFrom, mcVersion, StringComparison.Ordinal))
                 return LoaderInstallResult.Failure("Установщик Forge вернул профиль для другой версии Minecraft.");
             if (string.IsNullOrWhiteSpace(metadata.MainClass)) return LoaderInstallResult.Failure("В профиле Forge не указан главный класс.");
@@ -158,12 +170,35 @@ public sealed class LoaderInstaller : ILoaderInstaller
             _logger.LogInformation("Старый Forge {LoaderVersion} для Minecraft {Version} установлен без запуска processors.", loaderVersion, mcVersion);
             return LoaderInstallResult.Success(id, loaderVersion);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or VersionMetadataException or JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or InvalidDataException or VersionMetadataException or JsonException)
         {
             _logger.LogError(ex, "Не удалось установить старый Forge {LoaderVersion} для Minecraft {Version}.", loaderVersion, mcVersion);
             return LoaderInstallResult.Failure($"Не удалось установить старый Forge: {ex.Message}");
         }
         finally { TryDelete(tempInstaller); TryDelete(profileTemp); }
+    }
+
+    /// <summary>
+    /// Скачивает установщик и сверяет SHA-1 с файлом <c>&lt;адрес&gt;.sha1</c>, который Maven кладёт рядом.
+    /// Установщик запускается как программа, поэтому без подтверждённого хэша он не используется.
+    /// </summary>
+    /// <returns>null — файл скачан и проверен, иначе причина отказа.</returns>
+    private async Task<string?> DownloadInstallerAsync(string url, string destination, CancellationToken ct)
+    {
+        var shaPath = destination + ".sha1";
+        try
+        {
+            var sha = await _downloads.DownloadAsync(new DownloadRequest(url + ".sha1", shaPath), null, ct).ConfigureAwait(false);
+            if (!sha.Succeeded) return $"не получена контрольная сумма: {sha.Error}";
+
+            var text = (await File.ReadAllTextAsync(shaPath, ct).ConfigureAwait(false)).Trim();
+            var expected = text.Split(new[] { ' ', '\t', '\r', '\n' }, 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            if (expected.Length != 40 || !expected.All(Uri.IsHexDigit)) return "контрольная сумма на сервере записана в неожиданном формате.";
+
+            var result = await _downloads.DownloadAsync(new DownloadRequest(url, destination, expected), null, ct).ConfigureAwait(false);
+            return result.Succeeded ? null : result.Error ?? "загрузка не удалась.";
+        }
+        finally { TryDelete(shaPath); }
     }
 
     private static async Task<string?> ReadLegacyVersionJsonAsync(ZipArchive archive, CancellationToken ct)
@@ -206,13 +241,20 @@ public sealed class LoaderInstaller : ILoaderInstaller
             if (!File.Exists(installerPath))
             {
                 var url = kind == LoaderKind.NeoForge ? _endpoints.NeoForgeInstallerUrl(loaderVersion) : _endpoints.ForgeInstallerUrl(mcVersion, loaderVersion);
-                var downloaded = await _downloads.DownloadAsync(new DownloadRequest(url, tempInstaller), null, ct).ConfigureAwait(false);
-                if (!downloaded.Succeeded) return LoaderInstallResult.Failure($"Не удалось скачать установщик {loaderName} {loaderVersion}: {downloaded.Error}");
+                var downloadError = await DownloadInstallerAsync(url, tempInstaller, ct).ConfigureAwait(false);
+                if (downloadError is not null) return LoaderInstallResult.Failure($"Не удалось скачать установщик {loaderName} {loaderVersion}: {downloadError}");
                 File.Move(tempInstaller, installerPath, overwrite: true);
             }
 
             string versionJson;
-            using (var archive = ZipFile.OpenRead(installerPath))
+            ZipArchive opened;
+            try { opened = ZipFile.OpenRead(installerPath); }
+            catch (InvalidDataException)
+            {
+                TryDelete(installerPath);
+                return LoaderInstallResult.Failure($"Установщик {loaderName} {loaderVersion} повреждён и удалён из кэша — повтори попытку.");
+            }
+            using (var archive = opened)
             {
                 var entry = archive.GetEntry("version.json") ?? throw new InvalidDataException($"В установщике {loaderName} нет version.json. Возможно, этот выпуск ещё не использует современный формат.");
                 using var reader = new StreamReader(entry.Open());
@@ -271,7 +313,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             _logger.LogInformation("{Loader} {LoaderVersion} для Minecraft {Version} установлен.", loaderName, loaderVersion, mcVersion);
             return LoaderInstallResult.Success(id, loaderVersion);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException or VersionMetadataException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException or InvalidDataException or VersionMetadataException or JsonException)
         {
             _logger.LogError(ex, "Не удалось установить {Loader} {LoaderVersion} для Minecraft {Version}.", loaderName, loaderVersion, mcVersion);
             return LoaderInstallResult.Failure($"Не удалось установить {loaderName}: {ex.Message}");
@@ -290,13 +332,12 @@ public sealed class LoaderInstaller : ILoaderInstaller
 
     private static (int Major, string Component) DefaultJava(string mcVersion)
     {
-        var version = mcVersion.StartsWith("1.", StringComparison.Ordinal) ? mcVersion[2..] : mcVersion;
-        if (Version.TryParse(version, out var parsed))
+        if (LoaderMetaParser.TryParseRelease(mcVersion, out var major, out var minor))
         {
-            if (parsed.Major <= 16) return (8, "jre-legacy");
-            if (parsed.Major == 17) return (16, "java-runtime-alpha");
-            if (parsed.Major < 20 || parsed.Major == 20 && parsed.Minor < 5) return (17, "java-runtime-gamma");
-            if (parsed.Major >= 26) return (25, "java-runtime-epsilon");
+            if (major <= 16) return (8, "jre-legacy");
+            if (major == 17) return (16, "java-runtime-alpha");
+            if (major < 20 || major == 20 && minor < 5) return (17, "java-runtime-gamma");
+            if (major >= 26) return (25, "java-runtime-epsilon");
         }
         return (21, "java-runtime-delta");
     }

@@ -8,7 +8,7 @@ using SubReel.Launcher.Domain.Versions;
 namespace SubReel.Launcher.Application.Games;
 
 /// <summary>Что нажал пользователь: версия из нижней панели, загрузчик (и его версия, если выбрана) и активный аккаунт.</summary>
-/// <param name="LoaderVersion">Версия загрузчика. null у ванили; у Fabric и Quilt null означает «последняя стабильная».</param>
+/// <param name="LoaderVersion">Версия загрузчика. null у ванили; у Fabric, Quilt, Forge и NeoForge null означает «последняя стабильная».</param>
 public sealed record PlayRequest(string McVersion, LoaderKind Loader, LauncherAccount Account, string? LoaderVersion = null);
 
 /// <summary>Итог нажатия «Играть». <see cref="Instance"/> — сборка, под которую шёл запуск (null, если до неё дело не дошло).</summary>
@@ -92,8 +92,6 @@ public sealed class GamePlayService
 
     private static string UnsupportedText(LoaderKind loader) => loader switch
     {
-        LoaderKind.Forge or LoaderKind.NeoForge =>
-            $"Запуск с {LoaderInfo.Name(loader)} пока не поддерживается: его установщик появится следующим шагом. Fabric и Quilt уже работают.",
         LoaderKind.Other => "Особые сборки (OptiFine, LabyMod и подобные) запустить из лаунчера пока нельзя.",
         _ => "Этот загрузчик пока не поддерживается.",
     };
