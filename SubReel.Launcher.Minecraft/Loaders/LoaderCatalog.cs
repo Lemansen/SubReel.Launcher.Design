@@ -33,6 +33,7 @@ public sealed class LoaderCatalog : ILoaderCatalog
 
     public async Task<IReadOnlyList<LoaderBuild>> GetBuildsAsync(LoaderKind kind, string mcVersion, CancellationToken ct = default)
     {
+        if (kind is LoaderKind.NeoForge or LoaderKind.Forge) return await GetMavenBuildsAsync(kind, mcVersion, ct).ConfigureAwait(false);
         if (!LoaderInfo.CanInstall(kind)) return Array.Empty<LoaderBuild>();
         if (!LoaderMetaParser.IsSafeVersionText(mcVersion)) throw new LoaderCatalogException($"Недопустимая версия игры «{mcVersion}».");
 
@@ -62,6 +63,35 @@ public sealed class LoaderCatalog : ILoaderCatalog
             TryDelete(path);
             throw;
         }
+    }
+
+    private async Task<IReadOnlyList<LoaderBuild>> GetMavenBuildsAsync(LoaderKind kind, string mcVersion, CancellationToken ct)
+    {
+        if (!LoaderMetaParser.IsSafeVersionText(mcVersion)) throw new LoaderCatalogException($"Недопустимая версия игры «{mcVersion}».");
+        var path = _layout.LoaderBuildsPath(kind, "maven-metadata");
+        await _refreshGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var stale = !File.Exists(path) || _time.GetUtcNow() - File.GetLastWriteTimeUtc(path) >= MaxAge;
+            if (stale)
+            {
+                var url = kind == LoaderKind.NeoForge ? _endpoints.NeoForgeBuildListUrl : _endpoints.ForgeBuildListUrl;
+                var result = await _downloads.DownloadAsync(new DownloadRequest(url, path), null, ct).ConfigureAwait(false);
+                if (!result.Succeeded) _logger.LogWarning("Не удалось обновить каталог {Loader}: {Error}.", kind, result.Error);
+            }
+        }
+        finally { _refreshGate.Release(); }
+
+        if (!File.Exists(path)) throw new LoaderCatalogException($"Каталог {LoaderInfo.Name(kind)} недоступен: нет сети и сохранённой копии.");
+        try
+        {
+            var xml = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
+            return kind == LoaderKind.NeoForge
+                ? LoaderMetaParser.ParseNeoForgeBuilds(xml, mcVersion)
+                : LoaderMetaParser.ParseForgeBuilds(xml, mcVersion);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { throw new LoaderCatalogException($"Не удалось прочитать сохранённый каталог {LoaderInfo.Name(kind)}.", ex); }
     }
 
     private async Task RefreshAsync(LoaderKind kind, string mcVersion, string path, CancellationToken ct)

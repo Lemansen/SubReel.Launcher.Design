@@ -86,7 +86,7 @@ public sealed class VersionDropdownViewModel : ObservableObject, IDisposable
     /// <summary>Сколько новых сборок каждого загрузчика показывать: список не должен превращаться в каталог на сотни строк.</summary>
     private const int MaxOffersPerLoader = 3;
 
-    private static readonly LoaderKind[] OfferedLoaders = { LoaderKind.Fabric, LoaderKind.Quilt };
+    private static readonly LoaderKind[] OfferedLoaders = { LoaderKind.NeoForge, LoaderKind.Forge, LoaderKind.Fabric, LoaderKind.Quilt };
 
     private readonly VersionStore _store;
     private readonly NavigationService _nav;

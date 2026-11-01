@@ -10,12 +10,12 @@ public sealed class LoaderCatalogException : Exception
     }
 }
 
-/// <summary>Какие сборки загрузчика есть для версии игры. Источник — мета-сервер загрузчика (Fabric, Quilt).</summary>
+/// <summary>Какие сборки загрузчика доступны для версии игры: мета-серверы Fabric/Quilt или Maven каталоги Forge/NeoForge.</summary>
 public interface ILoaderCatalog
 {
     /// <summary>
     /// Сборки загрузчика для версии игры, новые первыми. Пустой список — загрузчик эту версию не поддерживает
-    /// (или он не из тех, что лаунчер ставит сам: Forge и NeoForge). Нет сети — берётся сохранённая копия, если она есть.
+    /// (или загрузчик не поддерживает эту версию игры). Нет сети — берётся сохранённая копия, если она есть.
     /// Бросает <see cref="LoaderCatalogException"/>; отмена — <see cref="OperationCanceledException"/>.
     /// </summary>
     Task<IReadOnlyList<LoaderBuild>> GetBuildsAsync(LoaderKind kind, string mcVersion, CancellationToken ct = default);

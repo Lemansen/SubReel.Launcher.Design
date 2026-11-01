@@ -25,7 +25,7 @@ public enum LaunchFailure
     None,
     /// <summary>Эта папка игры уже запущена или запускается.</summary>
     AlreadyRunning,
-    /// <summary>Загрузчик, который лаунчер пока не умеет запускать (Forge, NeoForge, особые сборки).</summary>
+    /// <summary>Загрузчик или особая сборка, которую лаунчер пока не умеет запускать.</summary>
     UnsupportedLoader,
     SignInRequired,
     SignInFailed,
@@ -41,7 +41,7 @@ public enum LaunchFailure
 }
 
 /// <summary>Что запускать. Версия и папка игры заданы явно: запуск не зависит от того, откуда они взялись (экземпляр или выбор в списке).</summary>
-/// <param name="VersionId">Идентификатор версии в общем кэше: для ванили — версия Minecraft, для Fabric и Quilt — имя профиля загрузчика (<c>fabric-loader-0.16.5-1.21.1</c>), который уже лежит в кэше.</param>
+/// <param name="VersionId">Идентификатор версии в общем кэше: для ванили — версия Minecraft, для загрузчика — имя его профиля, который уже лежит в кэше.</param>
 /// <param name="GameDirectory">Папка игры (saves, mods, options.txt); создаётся при необходимости.</param>
 public sealed record LaunchRequest(
     string VersionId,

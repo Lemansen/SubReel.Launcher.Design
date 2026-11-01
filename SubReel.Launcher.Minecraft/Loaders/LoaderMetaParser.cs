@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using SubReel.Launcher.Application.Loaders;
 using SubReel.Launcher.Domain.Versions;
 
@@ -50,6 +51,76 @@ public static class LoaderMetaParser
         catch (JsonException ex)
         {
             throw new LoaderCatalogException("Ответ мета-сервера загрузчика не является корректным JSON.", ex);
+        }
+    }
+
+    /// <summary>NeoForge publishes versions through Maven metadata; the game version is encoded in the first numeric components.</summary>
+    public static IReadOnlyList<LoaderBuild> ParseNeoForgeBuilds(string xml, string mcVersion)
+    {
+        if (!IsSafeVersionText(mcVersion)) return Array.Empty<LoaderBuild>();
+        var prefix = (mcVersion.StartsWith("1.", StringComparison.Ordinal) ? mcVersion[2..] : mcVersion) + ".";
+        try
+        {
+            var versions = XDocument.Parse(xml).Descendants("version")
+                .Select(e => e.Value.Trim())
+                .Where(v => IsSafeVersionText(v) && v.StartsWith(prefix, StringComparison.Ordinal))
+                .Distinct(StringComparer.Ordinal)
+                .Select(v => new LoaderBuild(LoaderKind.NeoForge, mcVersion, v, !v.Contains('-', StringComparison.Ordinal)))
+                .OrderByDescending(b => b.Stable)
+                .ThenByDescending(b => b.Version, MavenVersionComparer.Instance)
+                .ToList();
+            return versions;
+        }
+        catch (System.Xml.XmlException ex)
+        {
+            throw new LoaderCatalogException("Ответ Maven NeoForged не является корректным XML.", ex);
+        }
+    }
+
+    /// <summary>Forge Maven versions use the combined form &lt;minecraft&gt;-&lt;forge&gt;; the installer route depends on the game version.</summary>
+    public static IReadOnlyList<LoaderBuild> ParseForgeBuilds(string xml, string mcVersion)
+    {
+        if (!IsSafeVersionText(mcVersion)) return Array.Empty<LoaderBuild>();
+        var prefix = mcVersion + "-";
+        try
+        {
+            return XDocument.Parse(xml).Descendants("version")
+                .Select(e => e.Value.Trim())
+                .Where(v => v.StartsWith(prefix, StringComparison.Ordinal) && IsSafeVersionText(v[prefix.Length..]))
+                .Select(v => v[prefix.Length..])
+                .Distinct(StringComparer.Ordinal)
+                .Select(v => new LoaderBuild(LoaderKind.Forge, mcVersion, v, !v.Contains('-', StringComparison.Ordinal)))
+                .OrderByDescending(b => b.Stable)
+                .ThenByDescending(b => b.Version, MavenVersionComparer.Instance)
+                .ToList();
+        }
+        catch (System.Xml.XmlException ex)
+        {
+            throw new LoaderCatalogException("Ответ Maven Forge не является корректным XML.", ex);
+        }
+    }
+
+    public static bool IsForgeModernVersion(string version)
+    {
+        var text = version.StartsWith("1.", StringComparison.Ordinal) ? version[2..] : version;
+        return Version.TryParse(text, out var parsed) && (parsed.Major > 13 || parsed.Major == 13);
+    }
+
+    private sealed class MavenVersionComparer : IComparer<string>
+    {
+        public static MavenVersionComparer Instance { get; } = new();
+        public int Compare(string? x, string? y)
+        {
+            var left = (x ?? "").Split('-', 2)[0].Split('.');
+            var right = (y ?? "").Split('-', 2)[0].Split('.');
+            for (var i = 0; i < Math.Max(left.Length, right.Length); i++)
+            {
+                var a = i < left.Length && int.TryParse(left[i], out var av) ? av : -1;
+                var b = i < right.Length && int.TryParse(right[i], out var bv) ? bv : -1;
+                var cmp = a.CompareTo(b);
+                if (cmp != 0) return cmp;
+            }
+            return string.Compare(x, y, StringComparison.Ordinal);
         }
     }
 }

@@ -9,6 +9,8 @@ namespace SubReel.Launcher.Minecraft.Loaders;
 /// </summary>
 public sealed record LoaderEndpoints(string FabricMeta, string QuiltMeta)
 {
+    public string NeoForgeMaven { get; init; } = "https://maven.neoforged.net/releases";
+    public string ForgeMaven { get; init; } = "https://maven.minecraftforge.net";
     public static LoaderEndpoints Default { get; } = new("https://meta.fabricmc.net/v2", "https://meta.quiltmc.org/v3");
 
     /// <summary>Список сборок загрузчика для версии игры.</summary>
@@ -18,6 +20,19 @@ public sealed record LoaderEndpoints(string FabricMeta, string QuiltMeta)
     /// <summary>Профиль (version.json) загрузчика, который подходит стандартному лаунчеру.</summary>
     public string ProfileUrl(LoaderKind kind, string mcVersion, string loaderVersion) =>
         $"{Base(kind)}/versions/loader/{Uri.EscapeDataString(mcVersion)}/{Uri.EscapeDataString(loaderVersion)}/profile/json";
+
+    public string NeoForgeBuildListUrl => $"{NeoForgeMaven.TrimEnd('/')}/net/neoforged/neoforge/maven-metadata.xml";
+
+    public string NeoForgeInstallerUrl(string version) =>
+        $"{NeoForgeMaven.TrimEnd('/')}/net/neoforged/neoforge/{Uri.EscapeDataString(version)}/neoforge-{Uri.EscapeDataString(version)}-installer.jar";
+
+    public string ForgeBuildListUrl => $"{ForgeMaven.TrimEnd('/')}/net/minecraftforge/forge/maven-metadata.xml";
+
+    public string ForgeInstallerUrl(string mcVersion, string version)
+    {
+        var coordinate = $"{mcVersion}-{version}";
+        return $"{ForgeMaven.TrimEnd('/')}/net/minecraftforge/forge/{Uri.EscapeDataString(coordinate)}/forge-{Uri.EscapeDataString(coordinate)}-installer.jar";
+    }
 
     private string Base(LoaderKind kind) => kind switch
     {

@@ -26,9 +26,9 @@ public static class LoaderInfo
 
     /// <summary>
     /// Загрузчик, который лаунчер умеет ставить сам: профиль берётся с мета-сервера и ставится как обычная версия с <c>inheritsFrom</c> (Fabric, Quilt).
-    /// Forge и NeoForge ставятся установщиком с обработчиками — это отдельный шаг фазы 10.
+    /// Forge 1.13+ и NeoForge требуют выполнения processors установщика; старые Forge имеют отдельный формат.
     /// </summary>
-    public static bool CanInstall(LoaderKind kind) => kind is LoaderKind.Fabric or LoaderKind.Quilt;
+    public static bool CanInstall(LoaderKind kind) => kind is LoaderKind.Fabric or LoaderKind.Forge or LoaderKind.Quilt or LoaderKind.NeoForge;
 
     // fabric-loader-0.16.5-1.21.1, quilt-loader-0.27.0-beta.1-1.21.1, fabric-loader-0.15.11-24w14a
     private static readonly Regex ProfileIdPattern = new(
@@ -43,6 +43,8 @@ public static class LoaderInfo
     {
         LoaderKind.Fabric => $"fabric-loader-{loaderVersion}-{mcVersion}",
         LoaderKind.Quilt => $"quilt-loader-{loaderVersion}-{mcVersion}",
+        LoaderKind.Forge => $"{mcVersion}-forge-{loaderVersion}",
+        LoaderKind.NeoForge => $"neoforge-{loaderVersion}",
         _ => throw new NotSupportedException($"Профиль загрузчика {Name(kind)} не строится по имени: его создаёт установщик."),
     };
 
