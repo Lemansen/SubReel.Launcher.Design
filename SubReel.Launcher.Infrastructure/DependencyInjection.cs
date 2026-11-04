@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using SubReel.Launcher.Application.Abstractions;
 using SubReel.Launcher.Application.Authentication;
 using SubReel.Launcher.Application.News;
+using SubReel.Launcher.Application.Updates;
 using SubReel.Launcher.Infrastructure.Authentication;
 using SubReel.Launcher.Infrastructure.Avatars;
 using SubReel.Launcher.Infrastructure.Images;
@@ -11,6 +12,7 @@ using SubReel.Launcher.Infrastructure.News;
 using SubReel.Launcher.Infrastructure.Security;
 using SubReel.Launcher.Infrastructure.Settings;
 using SubReel.Launcher.Infrastructure.Storage;
+using SubReel.Launcher.Infrastructure.Updates;
 using SubReel.Launcher.Infrastructure.Versions;
 
 namespace SubReel.Launcher.Infrastructure;
@@ -33,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
             ? new DpapiSecretProtector()
             : throw new PlatformNotSupportedException("Защищённое хранилище токенов поддерживается только в Windows."));
         services.AddSingleton<ITokenStore, ProtectedFileTokenStore>();
+        services.AddSingleton<SubReel.Launcher.Application.Mods.ICurseForgeKey, SubReel.Launcher.Infrastructure.Security.CurseForgeKeyStore>();
 
         // HttpClient выдаёт фабрика: соединения переиспользуются, а DNS обновляется (PooledConnectionLifetime).
         services.AddHttpClient<IVersionCatalogService, MojangVersionCatalogService>(client =>
@@ -58,6 +61,16 @@ public static class InfrastructureServiceCollectionExtensions
             })
             .ConfigurePrimaryHttpMessageHandler(CreatePooledHandler);
         services.AddSingleton<IImageCache, DiskImageCache>();
+
+        // Автообновление лаунчера: манифест и скачивание архива (сам архив качает IDownloadManager).
+        services.AddHttpClient(LauncherUpdateService.HttpClientName, client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(15);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("SubReel-Launcher/0.1");
+            })
+            .ConfigurePrimaryHttpMessageHandler(CreatePooledHandler);
+        services.AddSingleton<IAppVersion, AssemblyAppVersion>();
+        services.AddSingleton<ILauncherUpdateService, LauncherUpdateService>();
 
         return services;
     }

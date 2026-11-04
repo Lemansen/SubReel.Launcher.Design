@@ -37,4 +37,7 @@ public sealed class Instance
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastPlayedUtc { get; set; }
+
+    /// <summary>Сколько всего наиграно в этой сборке (секунды). Считается по времени жизни процесса игры.</summary>
+    public long PlayTimeSeconds { get; set; }
 }

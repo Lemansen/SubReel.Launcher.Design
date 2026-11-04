@@ -16,6 +16,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubReel.Launcher.Minecraft"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubReel.Launcher.Authentication", "SubReel.Launcher.Authentication\SubReel.Launcher.Authentication.csproj", "{7B3E9A10-5D24-4C8F-9E61-A0F2C4D81B57}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubReel.Launcher.Mods", "SubReel.Launcher.Mods\SubReel.Launcher.Mods.csproj", "{9E4C2B67-1A35-4D08-B7F3-6C0D52A8E914}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubReel.Updater", "SubReel.Updater\SubReel.Updater.csproj", "{3D8F5A21-7C4E-4B96-A1D0-E52B8F6C9047}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,5 +54,13 @@ Global
 		{7B3E9A10-5D24-4C8F-9E61-A0F2C4D81B57}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7B3E9A10-5D24-4C8F-9E61-A0F2C4D81B57}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7B3E9A10-5D24-4C8F-9E61-A0F2C4D81B57}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E4C2B67-1A35-4D08-B7F3-6C0D52A8E914}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E4C2B67-1A35-4D08-B7F3-6C0D52A8E914}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E4C2B67-1A35-4D08-B7F3-6C0D52A8E914}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E4C2B67-1A35-4D08-B7F3-6C0D52A8E914}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D8F5A21-7C4E-4B96-A1D0-E52B8F6C9047}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D8F5A21-7C4E-4B96-A1D0-E52B8F6C9047}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D8F5A21-7C4E-4B96-A1D0-E52B8F6C9047}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D8F5A21-7C4E-4B96-A1D0-E52B8F6C9047}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

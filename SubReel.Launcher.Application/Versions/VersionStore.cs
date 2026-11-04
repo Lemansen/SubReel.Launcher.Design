@@ -51,6 +51,23 @@ public sealed class VersionStore
     public InstalledVersion? SelectedInstall { get; private set; }
 
     /// <summary>
+    /// Выбранное уже лежит в папке игры (для сборки — версия игры и загрузчик, с которыми она запускается). Если нет, кнопка «Играть» превращается
+    /// в «Установить»: лаунчер скачает недостающее при запуске. До окончания сканирования папки ответ «установлено» не гарантирован: смотри <see cref="InstalledScanned"/>.
+    /// </summary>
+    public bool IsSelectionInstalled
+    {
+        get
+        {
+            if (SelectedInstance is not { } build) return SelectedInstall is not null;
+
+            return Installed.Any(i =>
+                string.Equals(i.McVersion, build.McVersion, StringComparison.Ordinal)
+                && i.Loader == build.Loader
+                && (build.Loader == LoaderKind.Vanilla || string.IsNullOrEmpty(build.LoaderVersion) || string.Equals(i.LoaderVersion, build.LoaderVersion, StringComparison.Ordinal)));
+        }
+    }
+
+    /// <summary>
     /// Сборка, выбранная вручную (создана на странице «Создать сборку» или выбрана в «Мои сборки»). null — выбрана обычная версия.
     /// Пока она задана, версия игры, загрузчик и его версия берутся из неё, а «Играть» запускает именно эту сборку.
     /// </summary>

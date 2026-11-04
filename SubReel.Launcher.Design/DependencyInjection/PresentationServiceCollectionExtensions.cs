@@ -13,6 +13,7 @@ internal static class PresentationServiceCollectionExtensions
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IBrowserService, BrowserService>();
         services.AddSingleton<IClipboardService, ClipboardService>();
+        services.AddSingleton<IAppShutdown, AppShutdown>();
 
         // ViewModel-и
         services.AddSingleton<NavigationService>();
@@ -26,6 +27,7 @@ internal static class PresentationServiceCollectionExtensions
         services.AddSingleton<NewsViewModel>();
         services.AddSingleton<BuildsViewModel>();
         services.AddSingleton<HubViewModel>();
+        services.AddSingleton<UpdateViewModel>();
         services.AddSingleton<IOverlayFactory, OverlayFactory>();
         services.AddSingleton<MainViewModel>();
 

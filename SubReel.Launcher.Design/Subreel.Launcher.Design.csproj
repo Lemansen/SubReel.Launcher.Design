@@ -5,6 +5,16 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Версия лаунчера: её читает проверка обновлений (AssemblyInformationalVersion). Поднимай перед выпуском и в манифесте обновлений. -->
+    <Version>0.1.0</Version>
+    <AssemblyInformationalVersion>0.1.0</AssemblyInformationalVersion>
+  </PropertyGroup>
+  <!-- Apply the requested executable name only to the WPF launcher project.
+       A command-line AssemblyName global property would also rename every
+       referenced project and make NuGet restore fail with an ambiguous name. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Subreel.Launcher.Design' and '$(LauncherAssemblyName)' != ''">
+    <AssemblyName>$(LauncherAssemblyName)</AssemblyName>
+    <AssemblyTitle>$(LauncherAssemblyName)</AssemblyTitle>
   </PropertyGroup>
   <ItemGroup>
     <None Update="appsettings.json">
@@ -23,5 +33,7 @@
     <ProjectReference Include="..\SubReel.Launcher.Domain\SubReel.Launcher.Domain.csproj" />
     <ProjectReference Include="..\SubReel.Launcher.Infrastructure\SubReel.Launcher.Infrastructure.csproj" />
     <ProjectReference Include="..\SubReel.Launcher.Minecraft\SubReel.Launcher.Minecraft.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Mods\SubReel.Launcher.Mods.csproj" />
   </ItemGroup>
+
 </Project>

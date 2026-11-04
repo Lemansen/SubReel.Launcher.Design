@@ -55,6 +55,8 @@ public sealed class AppPaths
     public string LogsDirectory => Path.Combine(LauncherDirectory, "logs");
     /// <summary>Зашифрованные токены входа (по файлу на аккаунт). Потеря папки означает лишь повторный вход.</summary>
     public string AuthDirectory => Path.Combine(LauncherDirectory, "auth");
+    /// <summary>Скачанные и распакованные обновления лаунчера (по папке на версию). Всё можно удалять: при следующем запуске лаунчер сам убирает остатки.</summary>
+    public string UpdatesDirectory => Path.Combine(LauncherDirectory, "updates");
 
     // ───────────────────────── shared: общее для всех сборок ─────────────────────────
 

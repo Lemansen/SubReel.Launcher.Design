@@ -57,6 +57,7 @@ public partial class MainWindow : Window
     // Окно без рамки скруглено (как .app-shell, radius 32); в развёрнутом виде углы прямые.
     private void Window_StateChanged(object? sender, EventArgs e)
     {
+        LeaveFullScreenIfStateChanged();
         var radius = WindowState == WindowState.Maximized ? 0 : 32;
         WindowFrame.CornerRadius = new CornerRadius(radius);
         var inner = new CornerRadius(Math.Max(0, radius - 1));
@@ -99,6 +100,13 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F11)
+        {
+            ToggleFullScreen();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.Escape) return;
 
         // Первый Esc в поиске очищает запрос, второй — выходит из «Все версии».
@@ -128,6 +136,6 @@ public partial class MainWindow : Window
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void Maximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

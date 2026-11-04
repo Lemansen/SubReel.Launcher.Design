@@ -109,7 +109,11 @@ public sealed class GamePlayService
         var launchRequest = LaunchRequest.ForInstance(instance, _instances.GetGameDirectory(instance.Id), request.Account) with { VersionId = versionId };
         var launch = await _launcher.LaunchAsync(launchRequest, progress, ct).ConfigureAwait(false);
 
-        if (launch.Succeeded) await MarkPlayedAsync(instance).ConfigureAwait(false);
+        if (launch.Succeeded)
+        {
+            await MarkPlayedAsync(instance).ConfigureAwait(false);
+            TrackPlayTime(instance.Id, launch.Process!);
+        }
         return new PlayResult(launch, instance);
     }
 
@@ -152,6 +156,24 @@ public sealed class GamePlayService
         // Игре версия загрузчика нужна из запроса, а не из записи сборки: запуск продолжаем.
         _logger.LogWarning("Не удалось запомнить версию загрузчика {Version} для сборки {Id}.", loaderVersion, instance.Id);
         return instance;
+    }
+
+    /// <summary>Ждёт закрытия игры в фоне и прибавляет длительность сеанса к наигранному времени сборки. Если лаунчер закрыт раньше игры, этот сеанс не учитывается.</summary>
+    private void TrackPlayTime(string instanceId, IGameProcess process)
+    {
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+                await _instances.AddPlayTimeAsync(instanceId, started.Elapsed, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось учесть время игры в сборке {Id}.", instanceId);
+            }
+        });
     }
 
     private async Task MarkPlayedAsync(Instance instance)

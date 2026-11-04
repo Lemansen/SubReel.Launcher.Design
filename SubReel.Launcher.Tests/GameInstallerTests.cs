@@ -1,4 +1,9 @@
 using System.Text;
+using SubReel.Launcher.Minecraft.Downloads;
+using SubReel.Launcher.Application.Downloads;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
+using SubReel.Launcher.Minecraft.Installation;
 using SubReel.Launcher.Application.Games;
 using SubReel.Launcher.Domain.Games;
 using SubReel.Launcher.Minecraft.Versions;
@@ -183,6 +188,79 @@ public sealed class GameInstallerTests
 
         Assert.True(verification.IsValid);
         Assert.Equal(before, world.Requested.Count);
+    }
+
+    private static GameInstaller WithMemory(FakeGameWorld world) => new(world.Metadata, world.Downloads, world.Planner, world.Layout, world.Environment,
+        NullLogger<GameInstaller>.Instance, new VerifiedFilesCache(world.Layout, NullLogger<VerifiedFilesCache>.Instance));
+
+    [Fact]
+    public async Task Verify_with_memory_skips_hashing_of_unchanged_files_but_notices_changed_ones()
+    {
+        using var world = new FakeGameWorld();
+        await world.Installer.InstallAsync(FakeGameWorld.VersionId);
+        var installer = WithMemory(world);
+        var lwjgl = world.Layout.LibraryPath("org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar");
+
+        // Первая проверка полная: хэши сходятся, файл памяти записан.
+        Assert.True((await installer.VerifyAsync(FakeGameWorld.VersionId)).IsValid);
+        Assert.True(File.Exists(world.Layout.VerifiedFilesPath));
+
+        // Содержимое подменили, размер и время изменения вернули: быстрая проверка этого не видит (хэш не считается).
+        var stamp = File.GetLastWriteTimeUtc(lwjgl);
+        await File.WriteAllBytesAsync(lwjgl, Encoding.UTF8.GetBytes("LWJGL-LIB"));
+        File.SetLastWriteTimeUtc(lwjgl, stamp);
+        Assert.True((await installer.VerifyAsync(FakeGameWorld.VersionId)).IsValid);
+
+        // Время изменения другое: хэш считается заново, подмена найдена.
+        File.SetLastWriteTimeUtc(lwjgl, stamp.AddMinutes(5));
+        var verification = await installer.VerifyAsync(FakeGameWorld.VersionId);
+        Assert.False(verification.IsValid);
+        Assert.Contains(verification.Problems, p => p.Path == lwjgl && p.Reason == FileProblemReason.WrongHash);
+    }
+
+    [Fact]
+    public async Task Download_of_an_existing_unchanged_file_does_not_rehash_it_but_a_changed_file_is_downloaded_again()
+    {
+        using var world = new FakeGameWorld();
+        var cache = new VerifiedFilesCache(world.Layout, NullLogger<VerifiedFilesCache>.Instance);
+        var downloads = new HttpDownloadManager(new StubHttpClientFactory(world.Handler),
+            Options.Create(new DownloadOptions { MaxAttempts = 1, RetryDelay = TimeSpan.Zero }), NullLogger<HttpDownloadManager>.Instance, cache);
+
+        var hash = FakeGameWorld.Sha1(world.AssetA);
+        var path = world.Layout.AssetObjectPath(hash);
+        var request = new DownloadRequest(world.AssetUrl(world.AssetA), path, hash, world.AssetA.Length);
+
+        Assert.Equal(DownloadStatus.Downloaded, (await downloads.DownloadAsync(request)).Status);
+
+        // Тот же файл, что скачали: берётся из общей памяти, сеть не нужна.
+        var requestsBefore = world.Requested.Count;
+        Assert.Equal(DownloadStatus.AlreadyUpToDate, (await downloads.DownloadAsync(request)).Status);
+        Assert.Equal(requestsBefore, world.Requested.Count);
+
+        // Файл изменили (тот же размер, другое время): хэш считается заново, файл скачивается снова.
+        await File.WriteAllBytesAsync(path, new byte[world.AssetA.Length]);
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddMinutes(5));
+        Assert.Equal(DownloadStatus.Downloaded, (await downloads.DownloadAsync(request)).Status);
+        Assert.Equal(world.AssetA, await File.ReadAllBytesAsync(path));
+    }
+
+    [Fact]
+    public async Task Verify_with_memory_still_reports_missing_and_wrong_size_files()
+    {
+        using var world = new FakeGameWorld();
+        await world.Installer.InstallAsync(FakeGameWorld.VersionId);
+        var installer = WithMemory(world);
+        Assert.True((await installer.VerifyAsync(FakeGameWorld.VersionId)).IsValid);
+
+        File.Delete(world.Layout.AssetObjectPath(FakeGameWorld.Sha1(world.AssetA)));
+        var core = world.Layout.LibraryPath("com/example/core/1.0/core-1.0.jar");
+        await File.WriteAllTextAsync(core, "x");
+
+        var verification = await installer.VerifyAsync(FakeGameWorld.VersionId);
+
+        Assert.False(verification.IsValid);
+        Assert.Contains(verification.Problems, p => p.Path == core && p.Reason == FileProblemReason.WrongSize);
+        Assert.Contains(verification.Problems, p => p.Reason == FileProblemReason.Missing);
     }
 
     [Fact]

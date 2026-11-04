@@ -4,18 +4,21 @@ using SubReel.Launcher.Application.Games;
 
 namespace SubReel.Launcher.Design.ViewModels;
 
-/// <summary>Idle — можно играть; Loading — идёт подготовка (сессия, файлы, Java); Running — игра запущена.</summary>
-public enum LaunchState { Idle, Loading, Running }
+/// <summary>Idle — можно играть или ставить; Loading — идёт подготовка (сессия, файлы, Java), кнопка отменяет её; Cancelling — отмена принята, ждём остановки; Running — игра запущена.</summary>
+public enum LaunchState { Idle, Loading, Cancelling, Running }
 
 /// <summary>
 /// Кнопка «Играть» и индикатор подготовки рядом с ней. Подготовку и запуск делает <see cref="GamePlayService"/>
 /// (своя сборка на версию, общий кэш файлов); здесь только отображение этапов, ошибок и состояния «игра запущена».
-/// Пока игра работает, кнопка открывает окно с остановкой: случайный клик по большой кнопке не должен обрывать игру.
+/// Кнопка многофункциональная: «Играть» (версия есть), «Установить» (версии нет в папке игры), «Отменить» (идёт подготовка), а пока игра работает —
+/// окно с остановкой: случайный клик по большой кнопке не должен обрывать игру.
 /// </summary>
 public sealed class LaunchViewModel : ObservableObject, IDisposable
 {
     private const string IdleStatus = "Подготовка...";
-    private const string IdlePlayText = "ИГРАТЬ";
+    private const string PlayLabel = "ИГРАТЬ";
+    private const string InstallLabel = "УСТАНОВИТЬ";
+    private const string CancelLabel = "ОТМЕНИТЬ";
     private const int CrashOutputLines = 12;
 
     private readonly VersionStore _store;
@@ -28,13 +31,14 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _ui = SynchronizationContext.Current; // ViewModel создаётся в потоке интерфейса
 
     private LaunchState _state;
-    private string _playText = IdlePlayText;
+    private string _playText = PlayLabel;
     private double _progress;
     private string _progressText = "0%";
     private string _statusText = IdleStatus;
     private bool _isProgressExpanded;
     private IGameProcess? _process;
     private string _runningLabel = "";
+    private CancellationTokenSource? _launchCts;
 
     public LaunchViewModel(
         VersionStore store, AccountService accounts, GamePlayService play, NavigationService nav, IToastService toast, ILogger<LaunchViewModel> logger)
@@ -49,6 +53,12 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
 
         // Выбрали другую версию — подпись подготовки больше не верна (если ничего не идёт и не запущено).
         store.VersionSelected += (_, _) => ResetIfIdle();
+        // Список установленных версий обновился (скан папки, установка): «Играть» ↔ «Установить». Событие может прийти из фонового потока.
+        store.Changed += (_, _) =>
+        {
+            if (_ui is null) RefreshIdleText();
+            else _ui.Post(_ => RefreshIdleText(), null);
+        };
     }
 
     public LaunchState State { get => _state; private set => SetProperty(ref _state, value); }
@@ -61,6 +71,16 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
     public bool IsProgressExpanded { get => _isProgressExpanded; private set => SetProperty(ref _isProgressExpanded, value); }
 
     public ICommand PlayCommand { get; }
+
+    /// <summary>Выбранной версии нет в папке игры — кнопка предлагает установку (скачивание идёт при запуске).</summary>
+    private bool NeedsInstall => _store.InstalledScanned && !string.IsNullOrEmpty(_store.SelectedVersion) && !_store.IsSelectionInstalled;
+
+    private string IdleText => NeedsInstall ? InstallLabel : PlayLabel;
+
+    private void RefreshIdleText()
+    {
+        if (State == LaunchState.Idle) PlayText = IdleText;
+    }
 
     public void Dispose()
     {
@@ -84,7 +104,7 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
     private void ToIdle()
     {
         State = LaunchState.Idle;
-        PlayText = IdlePlayText;
+        PlayText = IdleText;
         IsProgressExpanded = false;
         Progress = 0;
         ProgressText = "0%";
@@ -93,7 +113,13 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
 
     private async Task PlayAsync()
     {
-        if (State == LaunchState.Loading) return;
+        if (State == LaunchState.Cancelling) return;
+
+        if (State == LaunchState.Loading)
+        {
+            CancelPreparation();
+            return;
+        }
 
         if (State == LaunchState.Running)
         {
@@ -109,19 +135,22 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         var loader = _store.SelectedLoader;
         var loaderVersion = _store.SelectedLoaderVersion;
 
+        var installing = NeedsInstall;
         State = LaunchState.Loading;
         IsProgressExpanded = true;
-        PlayText = "ЗАГРУЗКА...";
+        PlayText = CancelLabel;
         Progress = 0;
         ProgressText = "0%";
         StatusText = IdleStatus;
 
         var started = false;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _launchCts = cts;
         try
         {
             // Progress<T> доставляет отчёты в поток интерфейса, но с задержкой: запоздавший отчёт после старта игнорируется.
             var progress = new Progress<LaunchProgress>(ShowProgress);
-            var result = await _play.PlayAsync(new PlayRequest(version, loader, _accounts.Active, loaderVersion, instanceId), progress, _lifetime.Token);
+            var result = await _play.PlayAsync(new PlayRequest(version, loader, _accounts.Active, loaderVersion, instanceId), progress, cts.Token);
 
             if (result.Launch.Process is { } process)
             {
@@ -135,17 +164,31 @@ public sealed class LaunchViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // лаунчер закрывается — подготовка прервана, сообщать нечего
+            // Лаунчер закрывается — сообщать нечего; иначе это отмена кнопкой. Уже скачанные файлы остаются в кэше: повторная установка их не качает заново.
+            if (!_lifetime.IsCancellationRequested) _toast.Show(installing ? "Установка отменена" : "Запуск отменён");
         }
         finally
         {
+            _launchCts = null;
             if (!started) ToIdle();
+            _ = _store.RefreshInstalled(); // часть файлов уже могла лечь в папку игры: «Установить» → «Играть»
         }
+    }
+
+    /// <summary>Нажали «Отменить» во время подготовки: прерываем скачивание и запуск. Игру, которая успела стартовать, это не останавливает.</summary>
+    private void CancelPreparation()
+    {
+        if (_launchCts is not { } cts) return;
+
+        State = LaunchState.Cancelling;
+        PlayText = "ОТМЕНА...";
+        StatusText = "Отменяю...";
+        cts.Cancel();
     }
 
     private void ShowProgress(LaunchProgress p)
     {
-        if (State != LaunchState.Loading) return;
+        if (State != LaunchState.Loading) return; // при отмене шкала замирает
 
         var percent = Math.Clamp((int)Math.Round(p.Fraction * 100), 0, 100);
         Progress = percent;

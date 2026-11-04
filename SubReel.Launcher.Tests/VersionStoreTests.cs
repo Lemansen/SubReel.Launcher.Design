@@ -225,6 +225,41 @@ public sealed class VersionStoreTests
     private static Instance Build(string id = "moya", string mc = "1.20.4", LoaderKind loader = LoaderKind.Fabric, string? loaderVersion = "0.15.0") =>
         new() { Id = id, Name = "Моя сборка", McVersion = mc, Loader = loader, LoaderVersion = loaderVersion };
 
+    [Theory]
+    [InlineData("0.15.0", true)]   // та же версия загрузчика лежит в папке игры
+    [InlineData("0.16.0", false)]  // другая версия загрузчика — ставить заново
+    [InlineData(null, true)]       // версия загрузчика не зафиксирована — подойдёт любая
+    public async Task Selected_build_is_installed_only_when_its_game_and_loader_are_in_the_folder(string? loaderVersion, bool expected)
+    {
+        var fabric = new InstalledVersion { Id = "fabric-loader-0.15.0-1.20.4", McVersion = "1.20.4", Loader = LoaderKind.Fabric, LoaderVersion = "0.15.0" };
+        var installed = new FakeInstalledService
+        {
+            OnScan = () => Task.FromResult(new InstalledScanResult { GameDirectory = "game", DirectoryFound = true, Versions = new[] { fabric } }),
+        };
+        var store = Create(new FakeSettingsService(), installed);
+        await store.RefreshInstalled();
+
+        store.SelectInstance(Build(loaderVersion: loaderVersion));
+
+        Assert.Equal(expected, store.IsSelectionInstalled);
+    }
+
+    [Fact]
+    public async Task Selected_build_with_another_loader_is_not_installed()
+    {
+        var fabric = new InstalledVersion { Id = "fabric-loader-0.15.0-1.20.4", McVersion = "1.20.4", Loader = LoaderKind.Fabric, LoaderVersion = "0.15.0" };
+        var installed = new FakeInstalledService
+        {
+            OnScan = () => Task.FromResult(new InstalledScanResult { GameDirectory = "game", DirectoryFound = true, Versions = new[] { fabric } }),
+        };
+        var store = Create(new FakeSettingsService(), installed);
+        await store.RefreshInstalled();
+
+        store.SelectInstance(Build(loader: LoaderKind.Forge, loaderVersion: "47.2.0"));
+
+        Assert.False(store.IsSelectionInstalled);
+    }
+
     [Fact]
     public void SelectInstance_takes_version_and_loader_from_the_build_and_saves_the_choice()
     {

@@ -22,8 +22,10 @@ public sealed class GameInstaller : IGameInstaller
     private readonly GameFileLayout _layout;
     private readonly OsEnvironment _environment;
     private readonly ILogger<GameInstaller> _logger;
+    private readonly VerifiedFilesCache? _verified;
 
-    public GameInstaller(IVersionMetadataProvider metadata, IDownloadManager downloads, GameFilePlanner planner, GameFileLayout layout, OsEnvironment environment, ILogger<GameInstaller> logger)
+    public GameInstaller(IVersionMetadataProvider metadata, IDownloadManager downloads, GameFilePlanner planner, GameFileLayout layout, OsEnvironment environment, ILogger<GameInstaller> logger,
+        VerifiedFilesCache? verifiedFiles = null)
     {
         _metadata = metadata;
         _downloads = downloads;
@@ -31,6 +33,7 @@ public sealed class GameInstaller : IGameInstaller
         _layout = layout;
         _environment = environment;
         _logger = logger;
+        _verified = verifiedFiles;
     }
 
     public async Task<InstallResult> InstallAsync(string versionId, IProgress<InstallProgress>? progress = null, CancellationToken ct = default)
@@ -53,6 +56,7 @@ public sealed class GameInstaller : IGameInstaller
                 if (index.IsVirtual) await CopyVirtualAssetsAsync(indexInfo.Id, index, ct).ConfigureAwait(false);
             }
 
+            if (_verified is not null) await _verified.SaveAsync(ct).ConfigureAwait(false); // скачанные файлы уже в памяти: первый запуск не будет их хэшировать
             progress?.Report(new InstallProgress(InstallStage.Completed, 0, 0, 0, null));
             _logger.LogInformation("Версия {Id} установлена.", versionId);
             return InstallResult.Success(version);
@@ -104,14 +108,45 @@ public sealed class GameInstaller : IGameInstaller
             }
         }
 
+        // Хэш считается только у файлов, которые изменились с прошлой проверки (или проверяются впервые): остальным хватает размера и времени.
+        var snapshot = _verified is null ? null : await _verified.GetAsync(ct).ConfigureAwait(false);
+
         await Parallel.ForEachAsync(requests, new ParallelOptions { MaxDegreeOfParallelism = VerifyParallelism, CancellationToken = ct }, async (request, token) =>
         {
-            var check = await FileVerifier.CheckAsync(request.DestinationPath, request.ExpectedSha1, request.ExpectedSize, token).ConfigureAwait(false);
+            var check = await CheckFileAsync(request, snapshot, token).ConfigureAwait(false);
             if (check != FileCheck.Ok) problems.Add(new FileProblem(request.DestinationPath, ToReason(check)));
         }).ConfigureAwait(false);
 
+        if (_verified is not null) await _verified.SaveAsync(ct).ConfigureAwait(false);
+
         var distinct = problems.GroupBy(p => p.Path, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).OrderBy(p => p.Path, StringComparer.OrdinalIgnoreCase).ToList();
         return new VerificationResult(true, distinct);
+    }
+
+    private static async Task<FileCheck> CheckFileAsync(DownloadRequest request, VerifiedFilesSnapshot? snapshot, CancellationToken ct)
+    {
+        if (snapshot is null || string.IsNullOrWhiteSpace(request.ExpectedSha1))
+            return await FileVerifier.CheckAsync(request.DestinationPath, request.ExpectedSha1, request.ExpectedSize, ct).ConfigureAwait(false);
+
+        var info = new FileInfo(request.DestinationPath);
+        if (!info.Exists)
+        {
+            snapshot.Forget(request.DestinationPath);
+            return FileCheck.Missing;
+        }
+
+        if (request.ExpectedSize is { } size && info.Length != size)
+        {
+            snapshot.Forget(request.DestinationPath);
+            return FileCheck.WrongSize;
+        }
+
+        if (snapshot.IsUnchanged(request.DestinationPath, info)) return FileCheck.Ok;
+
+        var result = await FileVerifier.CheckAsync(request.DestinationPath, request.ExpectedSha1, request.ExpectedSize, ct).ConfigureAwait(false);
+        if (result == FileCheck.Ok) snapshot.Remember(request.DestinationPath, new FileInfo(request.DestinationPath));
+        else snapshot.Forget(request.DestinationPath);
+        return result;
     }
 
     private async Task<IReadOnlyList<DownloadResult>> DownloadAsync(IReadOnlyList<DownloadRequest> requests, InstallStage stage, IProgress<InstallProgress>? progress, CancellationToken ct)

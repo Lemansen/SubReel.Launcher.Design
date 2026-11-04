@@ -21,7 +21,23 @@ public static class LauncherSettingsMigrator
             settings.SchemaVersion = 1;
             changed = true;
         }
+        if (settings.SchemaVersion < 2)
+        {
+            MigrateToV2(settings);
+            settings.SchemaVersion = 2;
+            changed = true;
+        }
         return changed;
+    }
+
+    /// <summary>v1 → v2: поля отложенного обновления лаунчера. Старые файлы их не содержат — значения по умолчанию («ничего не отложено»), остальное не трогаем.</summary>
+    private static void MigrateToV2(LauncherSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.PostponedUpdateVersion))
+        {
+            settings.PostponedUpdateVersion = null;
+            settings.UpdateSnoozedUntilUtc = null;
+        }
     }
 
     /// <summary>v0 → v1: файл без версии формата. Чиним null-ы и пропуски, которые мог оставить ручной редактор или старый лаунчер.</summary>

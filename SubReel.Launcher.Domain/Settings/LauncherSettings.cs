@@ -9,7 +9,7 @@ namespace SubReel.Launcher.Domain.Settings;
 public sealed class LauncherSettings
 {
     /// <summary>Версия формата файла настроек, которую понимает эта сборка лаунчера.</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     /// <summary>
     /// Версия формата, в котором записан файл. У файлов, созданных до введения версионирования, поля нет — читается как 0
@@ -37,6 +37,15 @@ public sealed class LauncherSettings
 
     /// <summary>Добавленные аккаунты (пока офлайн-ники; Microsoft / SubReel ID подключим позже).</summary>
     public List<LauncherAccount> Accounts { get; set; } = new() { new LauncherAccount { Name = "Gamer", Kind = "Офлайн" } };
+
+    /// <summary>Ключ API CurseForge, зашифрованный для текущего пользователя ОС (base64). null — ключ не задан. Открытым текстом ключ не хранится.</summary>
+    public string? CurseForgeKeyProtected { get; set; }
+
+    /// <summary>Версия обновления лаунчера, которую пользователь отложил кнопкой «Позже» (например «1.2.0»). null — ничего не отложено.</summary>
+    public string? PostponedUpdateVersion { get; set; }
+
+    /// <summary>До какого момента (UTC) баннер отложенного обновления не показывается. Более новая версия баннер возвращает раньше срока.</summary>
+    public DateTime? UpdateSnoozedUntilUtc { get; set; }
 
     /// <summary>Ник активного аккаунта.</summary>
     public string ActiveAccount { get; set; } = "Gamer";

@@ -45,6 +45,9 @@ public sealed class GameFileLayout
     /// <summary>Папка копии ассетов под исходными именами для старого («virtual») индекса: её игра получает как <c>${game_assets}</c>.</summary>
     public string VirtualAssetsDirectory(string indexId) => Inside(Path.Combine(Root, "assets", "virtual"), SimpleName(indexId));
 
+    /// <summary>Память о файлах, у которых хэш уже проверен: <c>verified/files.json</c> (см. <c>VerifiedFilesCache</c>).</summary>
+    public string VerifiedFilesPath => Path.Combine(Root, "verified", "files.json");
+
     public string LoggingConfigPath(string fileId) => Inside(Path.Combine(Root, "assets", "log_configs"), SimpleName(fileId));
 
     /// <summary>Сохранённый ответ мета-сервера со списком сборок загрузчика для версии игры: <c>loaders/&lt;fabric|quilt&gt;/&lt;версия&gt;.json</c>.</summary>

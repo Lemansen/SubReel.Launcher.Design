@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using SubReel.Launcher.Application.Mods;
 
 namespace SubReel.Launcher.Design.ViewModels;
 
@@ -39,18 +40,27 @@ public sealed class SettingsOverlayViewModel : OverlayViewModel
     private readonly IDataLocationService _location;
     private readonly IDialogService _dialogs;
     private readonly IToastService _toast;
+    private readonly ICurseForgeKey _curseForgeKey;
+    private string _curseForgeKeyInput = "";
     private double _ramGb = 4;
     private bool _autoUpdate = true;
     private bool _closeAfterLaunch = true;
 
-    public SettingsOverlayViewModel(IDataLocationService location, IDialogService dialogs, IToastService toast)
+    public SettingsOverlayViewModel(IDataLocationService location, IDialogService dialogs, IToastService toast, ICurseForgeKey curseForgeKey, UpdateViewModel update)
     {
+        _curseForgeKey = curseForgeKey;
+        Update = update;
+        SaveCurseForgeKeyCommand = new RelayCommand(SaveCurseForgeKey, () => CurseForgeKeyInput.Trim().Length > 0);
+        ClearCurseForgeKeyCommand = new RelayCommand(ClearCurseForgeKey, () => _curseForgeKey.IsConfigured);
         _location = location;
         _dialogs = dialogs;
         _toast = toast;
         PickFolderCommand = new RelayCommand(PickFolder);
         ResetFolderCommand = new RelayCommand(ResetFolder, () => _location.IsCustom || _location.PendingRoot is not null);
     }
+
+    /// <summary>Раздел «О лаунчере»: версия и обновления (общая ViewModel с баннером).</summary>
+    public UpdateViewModel Update { get; }
 
     public override string Title => "Настройки";
 
@@ -63,6 +73,46 @@ public sealed class SettingsOverlayViewModel : OverlayViewModel
         : "";
 
     public bool HasPending => _location.PendingRoot is not null;
+
+    // ───────────────────────── Ключ API CurseForge ─────────────────────────
+
+    /// <summary>Поле для вставки ключа. После сохранения очищается: сохранённый ключ в интерфейсе не показывается.</summary>
+    public string CurseForgeKeyInput
+    {
+        get => _curseForgeKeyInput;
+        set
+        {
+            if (SetProperty(ref _curseForgeKeyInput, value) && SaveCurseForgeKeyCommand is RelayCommand save) save.NotifyCanExecuteChanged();
+        }
+    }
+
+    public string CurseForgeStatus => _curseForgeKey.IsConfigured
+        ? "Ключ сохранён (зашифрован для твоей учётной записи Windows). Каталог и импорт CurseForge включены."
+        : "Ключ не задан: каталог и импорт CurseForge выключены. Ключ выдаётся бесплатно на console.curseforge.com.";
+
+    public ICommand SaveCurseForgeKeyCommand { get; }
+    public ICommand ClearCurseForgeKeyCommand { get; }
+
+    private void SaveCurseForgeKey()
+    {
+        if (!_curseForgeKey.Set(CurseForgeKeyInput))
+        {
+            _toast.Show("Ключ не подошёл: в нём не должно быть пробелов, длина — до 200 символов. Не удалось сохранить.", 4000);
+            return;
+        }
+
+        CurseForgeKeyInput = "";
+        OnPropertyChanged(nameof(CurseForgeStatus));
+        if (ClearCurseForgeKeyCommand is RelayCommand clear) clear.NotifyCanExecuteChanged();
+        _toast.Show("Ключ CurseForge сохранён");
+    }
+
+    private void ClearCurseForgeKey()
+    {
+        _curseForgeKey.Set(null);
+        OnPropertyChanged(nameof(CurseForgeStatus));
+        _toast.Show("Ключ CurseForge удалён");
+    }
 
     public ICommand PickFolderCommand { get; }
     public ICommand ResetFolderCommand { get; }

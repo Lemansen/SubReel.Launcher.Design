@@ -23,5 +23,6 @@
     <ProjectReference Include="..\SubReel.Launcher.Infrastructure\SubReel.Launcher.Infrastructure.csproj" />
     <ProjectReference Include="..\SubReel.Launcher.Minecraft\SubReel.Launcher.Minecraft.csproj" />
     <ProjectReference Include="..\SubReel.Launcher.Authentication\SubReel.Launcher.Authentication.csproj" />
+    <ProjectReference Include="..\SubReel.Launcher.Mods\SubReel.Launcher.Mods.csproj" />
   </ItemGroup>
 </Project>

@@ -53,6 +53,8 @@ public partial class MainWindow
         VDropCard.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)));
         GrowCard(VDropCard);
         RotateChevron(VersionChevron, 180);
+        // Курсор сразу в поиске: можно печатать, не трогая мышь (Enter выберет первую строку, Esc очистит запрос).
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => VDropSearch.Focus()));
     }
 
     private void CloseVersionDropdownAnimated()
@@ -74,7 +76,7 @@ public partial class MainWindow
         var origin = VersionButton.TranslatePoint(new Point(0, 0), RootGrid);
         var left = Math.Max(8, origin.X);
         VDropCard.Margin = new Thickness(left, 0, 0, Math.Max(8, RootGrid.ActualHeight - origin.Y + 10));
-        VDropCard.Width = Math.Min(380, Math.Max(280, RootGrid.ActualWidth - left - 8));
+        VDropCard.Width = Math.Min(460, Math.Max(300, RootGrid.ActualWidth - left - 8));
         VDropCard.MaxHeight = Math.Max(200, origin.Y - 24);
     }
 

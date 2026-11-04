@@ -50,6 +50,7 @@ public static class MinecraftServiceCollectionExtensions
         services.AddSingleton<VersionManifestSource>();
         services.AddSingleton<IVersionMetadataProvider, VersionMetadataProvider>();
         services.AddSingleton<GameFilePlanner>();
+        services.AddSingleton<VerifiedFilesCache>();
         services.AddSingleton<IGameInstaller, GameInstaller>();
         services.AddSingleton<INativesExtractor, NativesExtractor>();
 

@@ -24,8 +24,11 @@ public sealed class HttpDownloadManager : IDownloadManager
     private readonly TimeSpan _stallTimeout;
     private readonly SemaphoreSlim _gate;
     private readonly KeyedLock _fileLocks = new();
+    private readonly int _maxConcurrent;
+    private readonly VerifiedFilesCache? _verified;
 
-    public HttpDownloadManager(IHttpClientFactory httpFactory, IOptions<DownloadOptions> options, ILogger<HttpDownloadManager> logger)
+    public HttpDownloadManager(IHttpClientFactory httpFactory, IOptions<DownloadOptions> options, ILogger<HttpDownloadManager> logger,
+        VerifiedFilesCache? verifiedFiles = null)
     {
         _httpFactory = httpFactory;
         _logger = logger;
@@ -34,7 +37,9 @@ public sealed class HttpDownloadManager : IDownloadManager
         _maxAttempts = Math.Max(1, value.MaxAttempts);
         _retryDelay = value.RetryDelay < TimeSpan.Zero ? TimeSpan.Zero : value.RetryDelay;
         _stallTimeout = value.StallTimeout > TimeSpan.Zero ? value.StallTimeout : TimeSpan.FromSeconds(30);
-        _gate = new SemaphoreSlim(Math.Max(1, value.MaxConcurrentDownloads));
+        _maxConcurrent = Math.Max(1, value.MaxConcurrentDownloads);
+        _gate = new SemaphoreSlim(_maxConcurrent);
+        _verified = verifiedFiles;
     }
 
     public async Task<DownloadResult> DownloadAsync(DownloadRequest request, IProgress<DownloadProgress>? progress = null, CancellationToken ct = default)
@@ -82,34 +87,30 @@ public sealed class HttpDownloadManager : IDownloadManager
             Interlocked.Add(ref totalReceived, delta);
         }
 
-        var tasks = new Task[count];
-        for (var i = 0; i < count; i++)
+        // Не больше MaxConcurrentDownloads файлов одновременно: тысячи ассетов не превращаются в тысячи ожидающих задач.
+        await Parallel.ForEachAsync(Enumerable.Range(0, count), new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrent, CancellationToken = ct }, async (index, token) =>
         {
-            var index = i;
-            tasks[i] = Task.Run(async () =>
+            var fileProgress = new InlineProgress<DownloadProgress>(p =>
             {
-                var fileProgress = new InlineProgress<DownloadProgress>(p =>
-                {
-                    SetReceived(index, p.BytesReceived);
-                    Report();
-                });
-
-                var result = await DownloadAsync(requests[index], fileProgress, ct).ConfigureAwait(false);
-                if (result.Status == DownloadStatus.AlreadyUpToDate && requests[index].ExpectedSize is { } size) SetReceived(index, size);
-
-                results[index] = result;
-                Interlocked.Increment(ref completed);
+                SetReceived(index, p.BytesReceived);
                 Report();
-            }, CancellationToken.None);
-        }
+            });
 
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+            var result = await DownloadAsync(requests[index], fileProgress, token).ConfigureAwait(false);
+            if (result.Status == DownloadStatus.AlreadyUpToDate && requests[index].ExpectedSize is { } size) SetReceived(index, size);
+
+            results[index] = result;
+            Interlocked.Increment(ref completed);
+            Report();
+        }).ConfigureAwait(false);
+
         return results;
     }
 
     private async Task<DownloadResult> RunAsync(DownloadRequest request, Uri uri, string destination, IProgress<DownloadProgress>? progress, CancellationToken ct)
     {
-        if (await IsValidExistingFileAsync(destination, request, ct).ConfigureAwait(false))
+        var verified = _verified is null ? null : await _verified.GetAsync(ct).ConfigureAwait(false);
+        if (await IsValidExistingFileAsync(destination, request, verified, ct).ConfigureAwait(false))
             return new DownloadResult(request, DownloadStatus.AlreadyUpToDate, 0);
 
         string? lastError = null;
@@ -118,6 +119,7 @@ public sealed class HttpDownloadManager : IDownloadManager
             try
             {
                 var bytes = await AttemptAsync(request, uri, destination, progress, ct).ConfigureAwait(false);
+                if (verified is not null && !string.IsNullOrWhiteSpace(request.ExpectedSha1)) verified.Remember(destination, new FileInfo(destination)); // хэш сошёлся при скачивании
                 return new DownloadResult(request, DownloadStatus.Downloaded, bytes);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -254,13 +256,22 @@ public sealed class HttpDownloadManager : IDownloadManager
         }
     }
 
-    private static async Task<bool> IsValidExistingFileAsync(string path, DownloadRequest request, CancellationToken ct)
+    private static async Task<bool> IsValidExistingFileAsync(string path, DownloadRequest request, VerifiedFilesSnapshot? verified, CancellationToken ct)
     {
         try
         {
-            if (!File.Exists(path)) return false;
-            if (request.ExpectedSize is { } size && new FileInfo(path).Length != size) return false;
-            if (!string.IsNullOrWhiteSpace(request.ExpectedSha1)) return await FileVerifier.Sha1MatchesAsync(path, request.ExpectedSha1, ct).ConfigureAwait(false);
+            var info = new FileInfo(path);
+            if (!info.Exists) return false;
+            if (request.ExpectedSize is { } size && info.Length != size) return false;
+            if (!string.IsNullOrWhiteSpace(request.ExpectedSha1))
+            {
+                // Файл уже проверяли и он не менялся (например, общий ассет другой версии) — хэш второй раз не считаем.
+                if (verified is not null && verified.IsUnchanged(path, info)) return true;
+
+                var matches = await FileVerifier.Sha1MatchesAsync(path, request.ExpectedSha1, ct).ConfigureAwait(false);
+                if (matches) verified?.Remember(path, info);
+                return matches;
+            }
             return request.ExpectedSize is not null || request.ReuseExisting;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

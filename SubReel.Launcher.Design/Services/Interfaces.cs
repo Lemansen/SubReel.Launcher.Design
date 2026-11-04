@@ -28,6 +28,12 @@ public interface IBrowserService
     bool TryOpen(string? url);
 }
 
+/// <summary>Закрытие лаунчера из ViewModel (например, перед заменой файлов при обновлении). Сами ViewModel-и от WPF не зависят.</summary>
+public interface IAppShutdown
+{
+    void Shutdown();
+}
+
 /// <summary>Буфер обмена (например, код входа Microsoft).</summary>
 public interface IClipboardService
 {

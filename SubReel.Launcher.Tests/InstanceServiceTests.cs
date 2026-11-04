@@ -94,6 +94,21 @@ public sealed class InstanceServiceTests
     }
 
     [Fact]
+    public async Task AddPlayTime_accumulates_sessions_and_ignores_empty_ones()
+    {
+        using var dir = new TempDir();
+        var (service, _, repo) = Create(dir);
+        var id = (await service.CreateAsync("Pack", "1.21.1")).Instance!.Id;
+
+        await service.AddPlayTimeAsync(id, TimeSpan.FromMinutes(10));
+        await service.AddPlayTimeAsync(id, TimeSpan.FromSeconds(90.7));
+        await service.AddPlayTimeAsync(id, TimeSpan.Zero);
+        await service.AddPlayTimeAsync(id, TimeSpan.FromSeconds(-30));
+
+        Assert.Equal(690, (await repo.GetAsync(id))!.PlayTimeSeconds);
+    }
+
+    [Fact]
     public async Task Changing_unknown_instance_reports_storage_failure_and_delete_works()
     {
         using var dir = new TempDir();

@@ -17,4 +17,5 @@ internal sealed class InstanceFile
     public string? JavaPath { get; set; }
     public DateTime CreatedUtc { get; set; }
     public DateTime? LastPlayedUtc { get; set; }
+    public long PlayTimeSeconds { get; set; }
 }

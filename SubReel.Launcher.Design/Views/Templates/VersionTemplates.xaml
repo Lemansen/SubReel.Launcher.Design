@@ -80,128 +80,188 @@
   </StackPanel>
  </DataTemplate>
 
+ <!-- ===== Карточки выпадающего списка версий: общие стили ===== -->
+ <!-- Плашка-карточка: стекло, при наведении светлеет, у выбранной — сине-фиолетовая подсветка -->
+ <Style x:Key="DropCard" TargetType="Border">
+  <Setter Property="CornerRadius" Value="14"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Margin" Value="0,3"/>
+  <Setter Property="Background" Value="#0DFFFFFF"/>
+  <Setter Property="BorderBrush" Value="#10FFFFFF"/>
+  <Style.Triggers>
+   <Trigger Property="IsMouseOver" Value="True">
+    <Setter Property="Background" Value="#18FFFFFF"/>
+    <Setter Property="BorderBrush" Value="#26FFFFFF"/>
+   </Trigger>
+   <DataTrigger Binding="{Binding IsSelected}" Value="True">
+    <Setter Property="BorderBrush" Value="#99A66BFF"/>
+    <Setter Property="Background">
+     <Setter.Value>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+       <GradientStop Color="#33A66BFF" Offset="0"/>
+       <GradientStop Color="#224C85FF" Offset="1"/>
+      </LinearGradientBrush>
+     </Setter.Value>
+    </Setter>
+   </DataTrigger>
+  </Style.Triggers>
+ </Style>
+
+ <Style x:Key="DropCardInstance" TargetType="Border" BasedOn="{StaticResource DropCard}">
+  <Style.Triggers>
+   <!-- Удаление взведено: красная подсветка всей карточки -->
+   <DataTrigger Binding="{Binding IsDeleteArmed}" Value="True">
+    <Setter Property="BorderBrush" Value="#B3EF4444"/>
+    <Setter Property="Background" Value="#26EF4444"/>
+   </DataTrigger>
+  </Style.Triggers>
+ </Style>
+
+ <!-- Невидимая кнопка на всю карточку: только клик «выбрать», вид рисует рамка -->
+ <Style x:Key="DropCardPick" TargetType="Button">
+  <Setter Property="Cursor" Value="Hand"/>
+  <Setter Property="Focusable" Value="False"/>
+  <Setter Property="Background" Value="Transparent"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="Button"><Border Background="Transparent" CornerRadius="14"/></ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+
+ <!-- Маленькая кнопка-значок в карточке (шестерёнка, удаление) -->
+ <Style x:Key="RowIconButton" TargetType="Button">
+  <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+  <Setter Property="Width" Value="32"/>
+  <Setter Property="Height" Value="32"/>
+  <Setter Property="Cursor" Value="Hand"/>
+  <Setter Property="Focusable" Value="False"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="Button">
+     <Border x:Name="Bd" Background="#0DFFFFFF" BorderBrush="#12FFFFFF" BorderThickness="1" CornerRadius="10"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#26FFFFFF"/><Setter Property="Foreground" Value="White"/></Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+
+ <!-- Плашка с короткой подписью: «1.21.11», «Forge 61.2.4» -->
+ <Style x:Key="DropPill" TargetType="Border">
+  <Setter Property="CornerRadius" Value="7"/>
+  <Setter Property="Padding" Value="7,2"/>
+  <Setter Property="Margin" Value="0,0,6,0"/>
+  <Setter Property="Background" Value="#14FFFFFF"/>
+ </Style>
+
+ <!-- Круглая отметка «выбрано» -->
+ <DataTemplate x:Key="SelectedBadge">
+  <Border Width="22" Height="22" CornerRadius="11" Background="{StaticResource AccentGradientPurple}">
+   <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Stroke="#0C0C0F" StrokeThickness="3.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas></Viewbox>
+  </Border>
+ </DataTemplate>
+
+ <!-- Заголовок раздела: подпись и тонкая линия -->
+ <DataTemplate DataType="{x:Type vm:SectionHeaderRowViewModel}">
+  <Grid Margin="6,14,6,4">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis" MaxWidth="360" VerticalAlignment="Center"/>
+   <Border Grid.Column="1" Height="1" Margin="10,0,0,0" Background="#12FFFFFF" VerticalAlignment="Center"/>
+  </Grid>
+ </DataTemplate>
+
+ <!-- Установленная версия из папки игры -->
  <DataTemplate DataType="{x:Type vm:InstalledVersionRowViewModel}">
-  <!-- Рамка у выбранной строки (шаблон MenuItemButton свою рамку не рисует) -->
-  <Border CornerRadius="12" BorderThickness="1" Margin="0,1">
-   <Border.Style>
-    <Style TargetType="Border">
-     <Setter Property="BorderBrush" Value="Transparent"/>
-     <Style.Triggers>
-      <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="BorderBrush" Value="#888B5CF6"/></DataTrigger>
-     </Style.Triggers>
-    </Style>
-   </Border.Style>
-   <Button Command="{Binding PickCommand}" Padding="8,7,12,7">
-    <Button.Style>
-     <Style TargetType="Button" BasedOn="{StaticResource MenuItemButton}">
-      <Style.Triggers>
-       <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#1F8B5CF6"/></DataTrigger>
-      </Style.Triggers>
-     </Style>
-    </Button.Style>
-    <Grid>
+  <Border Style="{StaticResource DropCard}">
+   <Grid>
+    <Button Style="{StaticResource DropCardPick}" Command="{Binding PickCommand}"/>
+    <Grid Margin="12,9,12,9" IsHitTestVisible="False">
      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <ctl:LoaderTile Kind="{Binding Kind}" Size="34"/>
+     <ctl:LoaderTile Kind="{Binding Kind}" Size="38"/>
      <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
       <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
       <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
      </StackPanel>
-     <!-- Справа: у выбранной — галочка, у остальных — статус установки -->
      <Grid Grid.Column="2" VerticalAlignment="Center">
-      <Viewbox Width="16" Height="16" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
-       <Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas>
-      </Viewbox>
+      <ContentControl ContentTemplate="{StaticResource SelectedBadge}" Content="{Binding}" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}"/>
       <StackPanel Orientation="Horizontal" Visibility="{Binding IsSelected, Converter={StaticResource InvBoolToVis}}">
        <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,6,0" VerticalAlignment="Center"/>
        <TextBlock Text="Установлена" FontSize="11" Foreground="{StaticResource TextMuted}"/>
       </StackPanel>
      </Grid>
     </Grid>
-   </Button>
+   </Grid>
   </Border>
  </DataTemplate>
 
- <!-- Раздел «Мои сборки»: сборки, созданные вручную -->
+ <!-- Моя сборка: плашки версии и загрузчика, строка «играл / наиграно»; настройки и удаление — справа в этой же карточке -->
  <DataTemplate DataType="{x:Type vm:InstanceRowViewModel}">
-  <!-- Рамка у выбранной строки (шаблон MenuItemButton свою рамку не рисует) -->
-  <Border CornerRadius="12" BorderThickness="1" Margin="0,1">
-   <Border.Style>
-    <Style TargetType="Border">
-     <Setter Property="BorderBrush" Value="Transparent"/>
-     <Style.Triggers>
-      <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="BorderBrush" Value="#888B5CF6"/></DataTrigger>
-     </Style.Triggers>
-    </Style>
-   </Border.Style>
-   <Button Command="{Binding PickCommand}" Padding="8,7,12,7">
-    <Button.Style>
-     <Style TargetType="Button" BasedOn="{StaticResource MenuItemButton}">
-      <Style.Triggers>
-       <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#1F8B5CF6"/></DataTrigger>
-      </Style.Triggers>
-     </Style>
-    </Button.Style>
-    <Grid>
-     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <ctl:LoaderTile Kind="{Binding Kind}" Size="34"/>
-     <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
-      <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-      <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
-     </StackPanel>
-     <!-- Справа: у выбранной — галочка, у остальных — статус установки -->
-     <Grid Grid.Column="2" VerticalAlignment="Center">
-      <Viewbox Width="16" Height="16" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
-       <Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas>
-      </Viewbox>
-      <StackPanel Orientation="Horizontal" Visibility="{Binding IsSelected, Converter={StaticResource InvBoolToVis}}">
-       <Ellipse Width="6" Height="6" Fill="#4ADE80" Margin="0,0,6,0" VerticalAlignment="Center"/>
-       <TextBlock Text="Моя сборка" FontSize="11" Foreground="{StaticResource TextMuted}"/>
+  <Border Style="{StaticResource DropCardInstance}">
+   <Grid>
+    <Button Style="{StaticResource DropCardPick}" Command="{Binding PickCommand}"/>
+    <Grid Margin="12,11,12,11" IsHitTestVisible="False">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="92"/></Grid.ColumnDefinitions>
+     <ctl:LoaderTile Kind="{Binding Kind}" Size="44" VerticalAlignment="Top"/>
+     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
+      <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+      <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+       <Border Style="{StaticResource DropPill}"><TextBlock Text="{Binding McVersionText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/></Border>
+       <Border Style="{StaticResource DropPill}" Background="#1F4C85FF"><TextBlock Text="{Binding LoaderText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentLight}"/></Border>
       </StackPanel>
-     </Grid>
+      <TextBlock Text="{Binding StatsText}" Margin="0,6,0,0" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+     </StackPanel>
     </Grid>
-   </Button>
+    <!-- Справа: отметка «выбрано» и два действия (отдельные кнопки поверх карточки) -->
+    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0">
+     <ContentControl ContentTemplate="{StaticResource SelectedBadge}" Content="{Binding}" HorizontalAlignment="Right" Margin="0,0,0,8"
+                     Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}"/>
+     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Visibility="{Binding IsDeleteArmed, Converter={StaticResource InvBoolToVis}}">
+      <Button Style="{StaticResource RowIconButton}" Command="{Binding SettingsCommand}" ToolTip="Настройки сборки">
+       <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Data="{StaticResource IconSettings}"/></Canvas></Viewbox>
+      </Button>
+      <Button Style="{StaticResource RowIconButton}" Command="{Binding DeleteCommand}" ToolTip="{Binding DeleteToolTip}" Margin="6,0,0,0">
+       <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Data="{StaticResource IconTrash}"/></Canvas></Viewbox>
+      </Button>
+     </StackPanel>
+     <!-- Второе нажатие удаляет; без него кнопка через 5 секунд сама вернётся в обычный вид -->
+     <Button Command="{Binding DeleteCommand}" Cursor="Hand" Focusable="False" HorizontalAlignment="Right" ToolTip="{Binding DeleteToolTip}"
+             Visibility="{Binding IsDeleteArmed, Converter={StaticResource BoolToVis}}">
+      <Button.Template>
+       <ControlTemplate TargetType="Button">
+        <Border x:Name="Bd" CornerRadius="10" Padding="12,7" Background="#E5EF4444">
+         <TextBlock Text="Удалить?" FontSize="12.5" FontWeight="Bold" Foreground="White"/>
+        </Border>
+        <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#FFF05252"/></Trigger></ControlTemplate.Triggers>
+       </ControlTemplate>
+      </Button.Template>
+     </Button>
+    </StackPanel>
+   </Grid>
   </Border>
  </DataTemplate>
 
- <!-- Раздел «Доступно для установки»: заголовок и сборки загрузчиков, которых ещё нет в папке игры -->
- <DataTemplate DataType="{x:Type vm:SectionHeaderRowViewModel}">
-  <TextBlock Text="{Binding Title}" Margin="8,14,0,6" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
- </DataTemplate>
-
+ <!-- Сборка загрузчика, которой ещё нет в папке игры -->
  <DataTemplate DataType="{x:Type vm:AvailableLoaderRowViewModel}">
-  <Border CornerRadius="12" BorderThickness="1" Margin="0,1">
-   <Border.Style>
-    <Style TargetType="Border">
-     <Setter Property="BorderBrush" Value="Transparent"/>
-     <Style.Triggers>
-      <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="BorderBrush" Value="#888B5CF6"/></DataTrigger>
-     </Style.Triggers>
-    </Style>
-   </Border.Style>
-   <Button Command="{Binding PickCommand}" Padding="8,7,12,7">
-    <Button.Style>
-     <Style TargetType="Button" BasedOn="{StaticResource MenuItemButton}">
-      <Style.Triggers>
-       <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#1F8B5CF6"/></DataTrigger>
-      </Style.Triggers>
-     </Style>
-    </Button.Style>
-    <Grid>
+  <Border Style="{StaticResource DropCard}">
+   <Grid>
+    <Button Style="{StaticResource DropCardPick}" Command="{Binding PickCommand}"/>
+    <Grid Margin="12,9,12,9" IsHitTestVisible="False">
      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <ctl:LoaderTile Kind="{Binding Kind}" Size="34"/>
+     <ctl:LoaderTile Kind="{Binding Kind}" Size="38"/>
      <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
       <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
       <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
      </StackPanel>
-     <!-- Справа: у выбранной — галочка, у остальных — подсказка, что файлы скачаются при запуске -->
      <Grid Grid.Column="2" VerticalAlignment="Center">
-      <Viewbox Width="16" Height="16" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
-       <Canvas Width="24" Height="24"><Path Stroke="{StaticResource AccentLight}" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconCheck}"/></Canvas>
-      </Viewbox>
-      <TextBlock Text="Скачать" FontSize="11" Foreground="{StaticResource TextMuted}" Visibility="{Binding IsSelected, Converter={StaticResource InvBoolToVis}}"/>
+      <ContentControl ContentTemplate="{StaticResource SelectedBadge}" Content="{Binding}" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}"/>
+      <Border Style="{StaticResource DropPill}" Margin="0" Background="#1F4C85FF" Visibility="{Binding IsSelected, Converter={StaticResource InvBoolToVis}}">
+       <TextBlock Text="Скачается при запуске" FontSize="11" Foreground="{StaticResource AccentLight}"/>
+      </Border>
      </Grid>
     </Grid>
-   </Button>
+   </Grid>
   </Border>
  </DataTemplate>
 

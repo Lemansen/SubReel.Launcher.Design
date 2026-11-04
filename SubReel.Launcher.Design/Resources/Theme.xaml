@@ -38,6 +38,7 @@
   <Geometry x:Key="IconPackage">M16.5 9.4l-9-5.19 M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12</Geometry>
   <Geometry x:Key="IconCube">M12 2L21 7V17L12 22L3 17V7Z M3 7L12 12L21 7 M12 12V22</Geometry>
   <Geometry x:Key="IconArrowLeft">M19 12H5 M12 19l-7-7 7-7</Geometry>
+  <Geometry x:Key="IconTrash">M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6</Geometry>
   <Geometry x:Key="IconExternal">M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3</Geometry>
   <SolidColorBrush x:Key="AccentPurple" Color="#A66BFF"/>
   <LinearGradientBrush x:Key="AccentGradientPurple" StartPoint="0,0" EndPoint="1,0">
@@ -450,7 +451,21 @@
        <Trigger Property="Tag" Value="running">
         <Setter TargetName="Bd" Property="Effect"><Setter.Value><DropShadowEffect Color="#78C8FF" Direction="270" ShadowDepth="8" BlurRadius="30" Opacity="0.4"/></Setter.Value></Setter>
        </Trigger>
+       <!-- Идёт подготовка: кнопка становится «Отменить» — спокойный тёмный фон и красноватый текст, при наведении подсвечивается -->
        <Trigger Property="Tag" Value="loading">
+        <Setter TargetName="Bd" Property="Background" Value="#2A171B"/>
+        <Setter TargetName="Bd" Property="Effect" Value="{x:Null}"/>
+        <Setter Property="Foreground" Value="#FF8A8A"/>
+       </Trigger>
+       <MultiTrigger>
+        <MultiTrigger.Conditions>
+         <Condition Property="Tag" Value="loading"/>
+         <Condition Property="IsMouseOver" Value="True"/>
+        </MultiTrigger.Conditions>
+        <Setter TargetName="Bd" Property="Background" Value="#3A1F25"/>
+       </MultiTrigger>
+       <!-- Отмена принята: ждём остановки, кнопка недоступна -->
+       <Trigger Property="Tag" Value="cancelling">
         <Setter TargetName="Bd" Property="Background" Value="#1C1C21"/>
         <Setter TargetName="Bd" Property="Effect" Value="{x:Null}"/>
         <Setter TargetName="Bd" Property="RenderTransform"><Setter.Value><TranslateTransform Y="0"/></Setter.Value></Setter>

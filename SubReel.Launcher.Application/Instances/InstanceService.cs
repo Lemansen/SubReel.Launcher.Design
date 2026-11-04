@@ -75,6 +75,14 @@ public sealed class InstanceService
     public async Task<InstanceOperationResult> MarkPlayedAsync(string id, CancellationToken ct = default) =>
         await ChangeAsync(id, instance => instance.LastPlayedUtc = _time.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
 
+    /// <summary>Прибавляет к наигранному времени сборки длительность одного сеанса. Нулевые и отрицательные значения игнорируются.</summary>
+    public async Task<InstanceOperationResult> AddPlayTimeAsync(string id, TimeSpan session, CancellationToken ct = default)
+    {
+        var seconds = (long)Math.Floor(session.TotalSeconds);
+        if (seconds <= 0) return new InstanceOperationResult(await _repository.GetAsync(id, ct).ConfigureAwait(false), InstanceValidationError.None, StorageFailed: false);
+        return await ChangeAsync(id, instance => instance.PlayTimeSeconds += seconds, ct).ConfigureAwait(false);
+    }
+
     public Task<bool> DeleteAsync(string id, CancellationToken ct = default) => _repository.DeleteAsync(id, ct);
 
     /// <summary>Папка игры экземпляра (saves, mods, options.txt). Только вычисляет путь.</summary>

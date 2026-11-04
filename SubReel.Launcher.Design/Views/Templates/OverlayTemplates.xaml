@@ -249,8 +249,34 @@
    </StackPanel>
    <TextBlock Text="{Binding PendingText}" Foreground="White" TextWrapping="Wrap" Margin="0,0,0,18"
               Visibility="{Binding HasPending, Converter={StaticResource BoolToVis}}"/>
+   <ctl:InfoBlock Title="Ключ API CurseForge" Detail="Нужен для каталога модов и импорта сборок CurseForge. Хранится зашифрованным и никуда, кроме CurseForge, не отправляется."/>
+   <TextBlock Text="{Binding CurseForgeStatus}" Foreground="{StaticResource AccentLight}" TextWrapping="Wrap" Margin="0,8,0,10"/>
+   <Grid Margin="0,0,0,18">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBox Text="{Binding CurseForgeKeyInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="200" Height="40" Padding="10,0" VerticalContentAlignment="Center" Background="#111116" Foreground="White" CaretBrush="White"
+             Style="{StaticResource ErrorableTextBox}" ToolTip="Вставь ключ сюда и нажми «Сохранить»"/>
+    <Button Grid.Column="1" Content="Сохранить" Style="{StaticResource SecondaryButton}" MinWidth="110" Margin="10,0,0,0" Command="{Binding SaveCurseForgeKeyCommand}"/>
+    <Button Grid.Column="2" Content="Удалить" Style="{StaticResource SecondaryButton}" MinWidth="90" Margin="8,0,0,0" Command="{Binding ClearCurseForgeKeyCommand}"/>
+   </Grid>
    <ctl:InfoBlock Title="Оформление" Detail="Тёмная тема · синие акценты · мягкие свечения"/>
    <ctl:InfoBlock Title="О лаунчере" Detail=".NET 10 · WPF · MVVM"/>
+   <StackPanel DataContext="{Binding Update}" Margin="0,8,0,0">
+    <TextBlock Text="{Binding CurrentVersionText}" FontSize="15" FontWeight="Bold" Foreground="White"/>
+    <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource AccentLight}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+    <TextBlock Text="{Binding ReleaseNotes}" Foreground="#D4D4D8" TextWrapping="Wrap" Margin="0,10,0,0" MaxHeight="120"
+               Visibility="{Binding HasReleaseNotes, Converter={StaticResource BoolToVis}}"/>
+    <StackPanel Margin="0,10,0,0" Visibility="{Binding IsInstalling, Converter={StaticResource BoolToVis}}">
+     <TextBlock Text="{Binding StageText}" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
+     <ProgressBar Style="{StaticResource LaunchProgressBar}" Value="{Binding Progress, Mode=OneWay}"/>
+    </StackPanel>
+    <TextBlock Text="{Binding ApplyError}" Foreground="#FF8A8A" TextWrapping="Wrap" Margin="0,10,0,0"
+               Visibility="{Binding HasApplyError, Converter={StaticResource BoolToVis}}"/>
+    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+     <Button Content="Скачать и установить" Style="{StaticResource SecondaryButton}" MinWidth="170" Margin="0,0,10,0" Command="{Binding DownloadCommand}"
+             Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}"/>
+     <Button Content="Проверить обновления" Style="{StaticResource SecondaryButton}" MinWidth="170" Command="{Binding CheckCommand}"/>
+    </StackPanel>
+   </StackPanel>
   </StackPanel>
  </DataTemplate>
 
@@ -295,8 +321,8 @@
      <Grid><Ellipse Width="220" Height="220" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-90,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#331BD96A" Offset="0"/><GradientStop Color="#001BD96A" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <ctl:BrandLogo Size="64" Logo="modrinth" Fallback="{StaticResource IconPackage}" Accent="#1BD96A" VerticalAlignment="Center" Margin="0,0,18,0"/>
-       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Modrinth" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Готовые сборки .mrpack и моды из открытого каталога." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
-       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1A1BD96A" BorderBrush="#441BD96A" BorderThickness="1"><TextBlock Text="СКОРО" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandModrinth}"/></Border>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Modrinth" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Моды из открытого каталога: кнопка «Моды» внизу ставит их в выбранную сборку. Готовые сборки — через «Импорт»." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1A1BD96A" BorderBrush="#441BD96A" BorderThickness="1"><TextBlock Text="МОДЫ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandModrinth}"/></Border>
       </Grid>
      </Grid>
     </Button>
@@ -305,17 +331,17 @@
      <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#2678C8FF" Offset="0"/><GradientStop Color="#101016" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <ctl:BrandLogo Size="64" Logo="import" Fallback="{StaticResource IconExternal}" Accent="#78C8FF" VerticalAlignment="Center" Margin="0,0,18,0"/>
-      <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Импорт" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Открой сборку Modrinth из файла .mrpack: моды скачаются сами." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="Импорт" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Открой сборку из файла: .mrpack (Modrinth) или .zip (CurseForge). Моды скачаются сами." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
      </Grid>
     </Button>
 
-    <Button Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource BrandCurseForge}" IsEnabled="False" BorderBrush="#55F16436">
+    <Button Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource BrandCard}" Padding="20" Tag="{StaticResource BrandCurseForge}" Command="{Binding ImportCommand}" BorderBrush="#55F16436">
      <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#26F16436" Offset="0"/><GradientStop Color="#160F0D" Offset="0.5"/><GradientStop Color="#0B0B10" Offset="1"/></LinearGradientBrush></Button.Background>
      <Grid><Ellipse Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-90,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#33F16436" Offset="0"/><GradientStop Color="#00F16436" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <ctl:BrandLogo Size="80" Logo="curseforge" Fallback="{StaticResource IconFlame}" Accent="#F16436" VerticalAlignment="Center" Margin="0,0,22,0"/>
-       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="CurseForge" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Популярные модпаки и моды из крупнейшего каталога. Понадобится ключ API." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
-       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1AF16436" BorderBrush="#44F16436" BorderThickness="1"><TextBlock Text="СКОРО" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandCurseForge}"/></Border>
+       <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="CurseForge" FontSize="20" FontWeight="Black" TextTrimming="CharacterEllipsis"/><TextBlock Text="Моды из каталога CurseForge — кнопка «Моды» внизу. Сборку .zip открой через «Импорт». Нужен ключ API: Настройки → CurseForge." Foreground="{StaticResource TextMuted}" FontSize="12.5" LineHeight="18" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="420" HorizontalAlignment="Left"/></StackPanel>
+       <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Padding="9,3" CornerRadius="8" Background="#1AF16436" BorderBrush="#44F16436" BorderThickness="1"><TextBlock Text="ИМПОРТ .ZIP" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrandCurseForge}"/></Border>
       </Grid>
      </Grid>
     </Button>
@@ -430,6 +456,121 @@
    </ItemsControl>
    <Button Content="{Binding ButtonText}" Command="{Binding ButtonCommand}" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" MinWidth="140"
            Visibility="{Binding HasButton, Converter={StaticResource BoolToVis}}"/>
+  </StackPanel>
+ </DataTemplate>
+ <!-- ===== Моды сборки (фаза 11): вкладки «Установленные» и «Найти моды» ===== -->
+ <Style x:Key="ModActionButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+  <Setter Property="Padding" Value="14,8"/>
+  <Style.Triggers>
+   <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+  </Style.Triggers>
+ </Style>
+
+ <DataTemplate DataType="{x:Type vm:InstalledModRow}">
+  <Border Margin="0,0,0,8" Padding="14,12" CornerRadius="14" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1">
+   <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <Border Width="40" Height="40" CornerRadius="12" Margin="0,0,14,0" VerticalAlignment="Center" Background="#1A1BD96A" BorderBrush="#441BD96A" BorderThickness="1">
+     <TextBlock Text="{Binding Initial}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="17" FontWeight="Black" Foreground="{StaticResource BrandModrinth}"/>
+    </Border>
+    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+     <StackPanel Orientation="Horizontal">
+      <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="Bold" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+      <Border Margin="10,0,0,0" Padding="8,2" CornerRadius="8" VerticalAlignment="Center" Background="#1A4C85FF" BorderBrush="#554C85FF" BorderThickness="1"
+              Visibility="{Binding HasBadge, Converter={StaticResource BoolToVis}}">
+       <TextBlock Text="{Binding BadgeText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource AccentLight}"/>
+      </Border>
+     </StackPanel>
+     <TextBlock Text="{Binding VersionText}" Margin="0,3,0,0" FontSize="12" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+     <TextBlock Text="{Binding Warning}" Margin="0,4,0,0" FontSize="12" Foreground="#FBBF24" TextWrapping="Wrap" Visibility="{Binding HasWarning, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
+    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+     <Button Content="{Binding UpdateText}" Style="{StaticResource ModActionButton}" Margin="0,0,8,0" Background="#1A1BD96A" BorderBrush="#441BD96A"
+             Command="{Binding UpdateCommand}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}"/>
+     <Button Content="{Binding RemoveText}" Style="{StaticResource ModActionButton}" Command="{Binding RemoveCommand}"/>
+    </StackPanel>
+   </Grid>
+  </Border>
+ </DataTemplate>
+
+ <DataTemplate DataType="{x:Type vm:ModCardRow}">
+  <Border Margin="0,0,0,8" Padding="14,12" CornerRadius="14" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1">
+   <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <Border Width="44" Height="44" CornerRadius="12" Margin="0,0,14,0" VerticalAlignment="Top" Background="#1A1BD96A" BorderBrush="#441BD96A" BorderThickness="1">
+     <TextBlock Text="{Binding Initial}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="Black" Foreground="{StaticResource BrandModrinth}"/>
+    </Border>
+    <StackPanel Grid.Column="1">
+     <StackPanel Orientation="Horizontal">
+      <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="Bold" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+      <TextBlock Text="{Binding Author}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+     </StackPanel>
+     <TextBlock Text="{Binding Summary}" Margin="0,4,0,0" FontSize="12.5" LineHeight="18" Foreground="#D4D4D8" TextWrapping="Wrap" MaxHeight="36" TextTrimming="CharacterEllipsis"/>
+     <TextBlock Text="{Binding DownloadsText}" Margin="0,5,0,0" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
+    </StackPanel>
+    <Button Grid.Column="2" Content="{Binding InstallText}" Style="{StaticResource ModActionButton}" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="110"
+            Command="{Binding InstallCommand}"/>
+   </Grid>
+  </Border>
+ </DataTemplate>
+
+ <DataTemplate DataType="{x:Type vm:ModsOverlayViewModel}">
+  <StackPanel>
+   <Grid Margin="0,0,0,14">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <StackPanel Orientation="Horizontal">
+     <Button Content="Установленные" Style="{StaticResource TabButton}" Command="{Binding ShowInstalledTabCommand}" Tag="{Binding IsInstalledTab, Converter={StaticResource ActiveTag}}"/>
+     <Button Content="Найти моды" Style="{StaticResource TabButton}" Command="{Binding ShowBrowseTabCommand}" Tag="{Binding IsBrowseTab, Converter={StaticResource ActiveTag}}"/>
+    </StackPanel>
+    <TextBlock Grid.Column="1" Text="{Binding Subtitle}" VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource TextMuted}"/>
+   </Grid>
+
+   <!-- Ход операции и ошибка видны на обеих вкладках -->
+   <Border Margin="0,0,0,12" Padding="16,12" CornerRadius="14" Background="#0F0F14" BorderBrush="#18FFFFFF" BorderThickness="1" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}">
+    <StackPanel>
+     <TextBlock Text="{Binding Status}" FontSize="13.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+     <ProgressBar Style="{StaticResource LaunchProgressBar}" Value="{Binding Progress, Mode=OneWay}" Margin="0,10,0,0"/>
+    </StackPanel>
+   </Border>
+   <Border Margin="0,0,0,12" Padding="16,10" CornerRadius="14" Background="#14EF4444" BorderBrush="#40EF4444" BorderThickness="1" Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+    <TextBlock Text="{Binding Error}" FontSize="13" Foreground="#FF8A8A" TextWrapping="Wrap"/>
+   </Border>
+
+   <!-- Установленные -->
+   <StackPanel Visibility="{Binding IsInstalledTab, Converter={StaticResource BoolToVis}}">
+    <DockPanel Margin="0,0,0,10" Visibility="{Binding HasInstalled, Converter={StaticResource BoolToVis}}">
+     <Button DockPanel.Dock="Right" Content="Проверить обновления" Style="{StaticResource ModActionButton}" Command="{Binding CheckUpdatesCommand}"/>
+     <TextBlock Text="{Binding UpdateNote}" VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap"/>
+    </DockPanel>
+    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,4,0,10" Foreground="{StaticResource AccentLight}" Background="#1FFFFFFF" BorderThickness="0"
+                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"/>
+    <ItemsControl ItemsSource="{Binding Installed}" Focusable="False"/>
+    <StackPanel Margin="0,24,0,12" HorizontalAlignment="Center" Visibility="{Binding IsEmptyInstalled, Converter={StaticResource BoolToVis}}">
+     <TextBlock Text="В этой сборке пока нет модов" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+     <TextBlock Text="Открой вкладку «Найти моды»: лаунчер подберёт версии для твоей игры и загрузчика и сам поставит нужные зависимости." Margin="0,6,0,14" MaxWidth="460"
+                TextAlignment="Center" TextWrapping="Wrap" FontSize="13" LineHeight="19" Foreground="{StaticResource TextMuted}"/>
+     <Button Content="Найти моды" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Center" MinWidth="160" Command="{Binding ShowBrowseTabCommand}"/>
+    </StackPanel>
+    <TextBlock Text="{Binding UnrecognizedNote}" Margin="2,6,0,0" FontSize="11.5" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Visibility="{Binding HasUnrecognizedNote, Converter={StaticResource BoolToVis}}"/>
+   </StackPanel>
+
+   <!-- Поиск -->
+   <StackPanel Visibility="{Binding IsBrowseTab, Converter={StaticResource BoolToVis}}">
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+     <Button Content="Modrinth" Style="{StaticResource TabButton}" Command="{Binding ShowModrinthCommand}" Tag="{Binding IsModrinthSource, Converter={StaticResource ActiveTag}}"/>
+     <Button Content="CurseForge" Style="{StaticResource TabButton}" Command="{Binding ShowCurseForgeCommand}" Tag="{Binding IsCurseForgeSource, Converter={StaticResource ActiveTag}}"/>
+    </StackPanel>
+    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Height="40" Padding="10,0" VerticalContentAlignment="Center" Background="#111116" Foreground="White" CaretBrush="White"
+             Style="{StaticResource ErrorableTextBox}" ToolTip="{Binding SearchHint}">
+     <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCommand}"/></TextBox.InputBindings>
+    </TextBox>
+    <TextBlock Text="{Binding SearchHint}" Margin="2,6,0,12" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
+    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,0,0,10" Foreground="{StaticResource AccentLight}" Background="#1FFFFFFF" BorderThickness="0"
+                 Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}"/>
+    <ItemsControl ItemsSource="{Binding Results}" Focusable="False"/>
+    <TextBlock Text="{Binding SearchNote}" Margin="2,4,0,0" FontSize="12.5" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Visibility="{Binding HasSearchNote, Converter={StaticResource BoolToVis}}"/>
+    <TextBlock Text="Каталоги: Modrinth (modrinth.com) и CurseForge (curseforge.com). Файлы проверяются по хэшу; моды, запретившие скачивание сторонними лаунчерами, не показываются." Margin="2,12,0,0" FontSize="11" Foreground="{StaticResource TextMuted}"/>
+   </StackPanel>
   </StackPanel>
  </DataTemplate>
 </ResourceDictionary>

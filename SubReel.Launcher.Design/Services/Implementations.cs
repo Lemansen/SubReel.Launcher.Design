@@ -54,7 +54,7 @@ public sealed class DialogService : IDialogService
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Выбери файл сборки",
-            Filter = "Сборки Modrinth (*.mrpack)|*.mrpack|Все файлы|*.*",
+            Filter = "Сборки (*.mrpack, *.zip)|*.mrpack;*.zip|Сборки Modrinth (*.mrpack)|*.mrpack|Сборки CurseForge (*.zip)|*.zip|Все файлы|*.*",
         };
         var owner = System.Windows.Application.Current?.MainWindow;
         var accepted = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
@@ -69,6 +69,11 @@ public sealed class DialogService : IDialogService
         var accepted = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
         return accepted == true ? dialog.FolderName : null;
     }
+}
+
+public sealed class AppShutdown : IAppShutdown
+{
+    public void Shutdown() => System.Windows.Application.Current?.Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown());
 }
 
 public sealed class BrowserService : IBrowserService

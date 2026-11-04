@@ -307,6 +307,12 @@
         <TextBlock Text="Создать сборку" VerticalAlignment="Center"/>
        </StackPanel>
       </Button>
+      <Button Style="{StaticResource FooterButtonMuted}" Margin="12,0,0,0" Command="{Binding OpenModsCommand}" ToolTip="Моды выбранной сборки: поиск на Modrinth, установка и обновление">
+       <StackPanel Orientation="Horizontal">
+        <Viewbox Width="16" Height="16" Margin="0,0,8,0"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconPackage}"/></Canvas></Viewbox>
+        <TextBlock Text="Моды" VerticalAlignment="Center"/>
+       </StackPanel>
+      </Button>
       <Button x:Name="VersionButton" Style="{StaticResource FooterButtonMuted}" Margin="12,0,0,0" Command="{Binding VersionDropdown.ToggleCommand}" ToolTip="{Binding VersionDropdown.StatusToolTip}">
        <StackPanel Orientation="Horizontal">
         <Viewbox Width="16" Height="16" Margin="0,0,8,0"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Data="{StaticResource IconFolderOpen}"/></Canvas></Viewbox>
@@ -425,14 +431,78 @@
    <Border Background="Transparent">
     <Border.InputBindings><MouseBinding Gesture="LeftClick" Command="{Binding CloseVersionDropdownCommand}"/></Border.InputBindings>
    </Border>
-   <Border x:Name="VDropCard" Width="380" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="240,0,0,142" Padding="10" CornerRadius="20" Background="#F5141419" BorderBrush="#1FFFFFFF" BorderThickness="1" Opacity="0" RenderTransformOrigin="0,1">
+   <Border x:Name="VDropCard" Width="460" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="240,0,0,142" Padding="12" CornerRadius="22" BorderBrush="#26FFFFFF" BorderThickness="1" Opacity="0" RenderTransformOrigin="0,1">
+    <Border.Background>
+     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+      <GradientStop Color="#F51C1B26" Offset="0"/>
+      <GradientStop Color="#F512121A" Offset="1"/>
+     </LinearGradientBrush>
+    </Border.Background>
     <Border.RenderTransform><ScaleTransform ScaleX="0.95" ScaleY="0.95"/></Border.RenderTransform>
-    <Border.Effect><DropShadowEffect Color="#000000" Direction="270" ShadowDepth="8" BlurRadius="30" Opacity="0.5"/></Border.Effect>
+    <Border.Effect><DropShadowEffect Color="#A66BFF" Direction="270" ShadowDepth="0" BlurRadius="40" Opacity="0.22"/></Border.Effect>
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
      <StackPanel Margin="8,4,8,8">
-      <TextBlock Text="ВЕРСИИ И ЗАГРУЗЧИКИ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentPurple}"/>
-      <TextBlock Text="{Binding VersionDropdown.StatusText}" Margin="0,3,0,0" FontSize="12.5" Foreground="{StaticResource TextMuted}"/>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <Border Width="38" Height="38" CornerRadius="12" Background="{StaticResource AccentGradientPurple}">
+        <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Style="{StaticResource IconPath}" Stroke="#0C0C0F" StrokeThickness="2.4" Data="{StaticResource IconLayers}"/></Canvas></Viewbox>
+       </Border>
+       <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+        <TextBlock Text="Версии и сборки" FontSize="16" FontWeight="Black"/>
+        <TextBlock Text="{Binding VersionDropdown.StatusText}" Margin="0,1,0,0" FontSize="12" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+       </StackPanel>
+       <Border Grid.Column="2" Padding="7,3" CornerRadius="7" Background="#10FFFFFF" VerticalAlignment="Top" ToolTip="Esc — закрыть список">
+        <TextBlock Text="Esc" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource TextMuted}"/>
+       </Border>
+      </Grid>
+      <!-- Поиск: слова ищутся в названии, версии игры и загрузчике. Enter — выбрать первую строку, Esc — очистить, повторный Esc — закрыть список -->
+      <Border Margin="0,12,0,0" Height="40" CornerRadius="14" Background="#12FFFFFF" BorderThickness="1">
+       <Border.Style>
+        <Style TargetType="Border">
+         <Setter Property="BorderBrush" Value="#18FFFFFF"/>
+         <Style.Triggers>
+          <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#B378C8FF"/></Trigger>
+         </Style.Triggers>
+        </Style>
+       </Border.Style>
+       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <Viewbox Width="15" Height="15" Margin="12,0,0,0"><Canvas Width="24" Height="24"><Path Stroke="{StaticResource TextMuted}" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="{StaticResource IconSearch}"/></Canvas></Viewbox>
+        <TextBox x:Name="VDropSearch" Grid.Column="1" Text="{Binding VersionDropdown.SearchText, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" Margin="8,0,4,0" VerticalContentAlignment="Center"
+                 Background="Transparent" BorderThickness="0" Foreground="White" CaretBrush="White" FontSize="13.5">
+         <TextBox.InputBindings>
+          <KeyBinding Key="Enter" Command="{Binding VersionDropdown.PickFirstCommand}"/>
+          <KeyBinding Key="Escape" Command="{Binding VersionDropdown.EscapeCommand}"/>
+         </TextBox.InputBindings>
+        </TextBox>
+        <TextBlock Grid.Column="1" Text="Поиск: название, версия, загрузчик" Margin="12,0,0,0" FontSize="13" Foreground="#66A1A1AA" VerticalAlignment="Center" IsHitTestVisible="False"
+                   Visibility="{Binding VersionDropdown.HasSearchText, Converter={StaticResource InvBoolToVis}}"/>
+        <Button Grid.Column="2" Content="×" Width="26" Height="26" Margin="0,0,6,0" FontSize="16" Style="{StaticResource NavButton}" Padding="0" Command="{Binding VersionDropdown.ClearSearchCommand}" ToolTip="Очистить поиск"
+                Visibility="{Binding VersionDropdown.HasSearchText, Converter={StaticResource BoolToVis}}"/>
+       </Grid>
+      </Border>
+      <!-- Фильтры: «Все», «Мои сборки» и загрузчики, которые есть в списке -->
+      <ItemsControl ItemsSource="{Binding VersionDropdown.Chips}" Margin="0,8,0,0" Focusable="False">
+       <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+       <ItemsControl.ItemTemplate>
+        <DataTemplate>
+         <Button Content="{Binding Title}" Command="{Binding SelectCommand}" FontSize="12" Padding="12,5" Margin="0,0,6,6">
+          <Button.Style>
+           <Style TargetType="Button" BasedOn="{StaticResource ChipButtonBlue}">
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding IsSelected}" Value="True">
+              <Setter Property="Background" Value="#334C85FF"/>
+              <Setter Property="BorderBrush" Value="#AA78C8FF"/>
+              <Setter Property="Foreground" Value="White"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </Button.Style>
+         </Button>
+        </DataTemplate>
+       </ItemsControl.ItemTemplate>
+      </ItemsControl>
       <!-- Выбранная версия не установлена: говорим об этом прямо -->
       <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="12" Background="#14FBBF24" BorderBrush="#40FBBF24" BorderThickness="1"
               Visibility="{Binding VersionDropdown.ShowMissingNotice, Converter={StaticResource BoolToVis}}">
@@ -442,6 +512,11 @@
                    FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" Margin="0,3,0,0"/>
        </StackPanel>
       </Border>
+      <!-- Поиск или фильтр ничего не нашли -->
+      <StackPanel Margin="8,14,8,6" HorizontalAlignment="Center" Visibility="{Binding VersionDropdown.ShowNoResults, Converter={StaticResource BoolToVis}}">
+       <TextBlock Text="{Binding VersionDropdown.NoResultsText}" FontSize="13.5" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+       <TextBlock Text="Попробуй другое слово или выбери фильтр «Все»." Margin="0,4,0,0" FontSize="12" TextAlignment="Center" Foreground="{StaticResource TextMuted}"/>
+      </StackPanel>
       <!-- Нет установленных версий -->
       <StackPanel Margin="8,14,8,4" HorizontalAlignment="Center" Visibility="{Binding VersionDropdown.ShowEmptyState, Converter={StaticResource BoolToVis}}">
        <ctl:LoaderTile Kind="Vanilla" Size="44" HorizontalAlignment="Center"/>
@@ -733,6 +808,25 @@
     </Grid>
    </Grid>
   </Grid>
+
+  <!-- Баннер обновления лаунчера: справа сверху под шапкой, над страницами (ZIndex 35), но под уведомлениями (40). Скрыт, когда открыт оверлей или вторичный экран -->
+  <Border x:Name="UpdateBanner" DataContext="{Binding Update}" Panel.ZIndex="35" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,92,24,0" Width="330" Padding="18,14" CornerRadius="18"
+          Background="#F2181820" BorderBrush="#664C85FF" BorderThickness="1" Visibility="{Binding IsBannerVisible, Converter={StaticResource BoolToVis}}">
+   <Border.Effect><DropShadowEffect Color="#000000" Direction="270" ShadowDepth="6" BlurRadius="24" Opacity="0.5"/></Border.Effect>
+   <StackPanel>
+    <TextBlock Text="{Binding BannerTitle}" FontSize="15" FontWeight="Black" Foreground="White"/>
+    <TextBlock Text="{Binding BannerDetail}" FontSize="12" Margin="0,3,0,0" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap"/>
+    <StackPanel Margin="0,12,0,0" Visibility="{Binding IsInstalling, Converter={StaticResource BoolToVis}}">
+     <TextBlock Text="{Binding StageText}" FontSize="12" Margin="0,0,0,6" Foreground="{StaticResource TextMuted}"/>
+     <ProgressBar Style="{StaticResource LaunchProgressBar}" Value="{Binding Progress, Mode=OneWay}"/>
+    </StackPanel>
+    <TextBlock Text="{Binding ApplyError}" FontSize="12" Margin="0,10,0,0" Foreground="#FF8A8A" TextWrapping="Wrap" Visibility="{Binding HasApplyError, Converter={StaticResource BoolToVis}}"/>
+    <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Visibility="{Binding IsIdle, Converter={StaticResource BoolToVis}}">
+     <Button Content="Скачать" Style="{StaticResource SecondaryButton}" Padding="16,8" MinWidth="110" Margin="0,0,8,0" Command="{Binding DownloadCommand}"/>
+     <Button Content="Позже" Style="{StaticResource SecondaryButton}" Padding="16,8" MinWidth="90" Command="{Binding PostponeCommand}" Visibility="{Binding CanPostpone, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
+   </StackPanel>
+  </Border>
 
   <!-- Уведомление «в разработке» и другие короткие сообщения -->
   <Border x:Name="ToastHost" Panel.ZIndex="40" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,150" Padding="18,12" CornerRadius="16" Background="#F2181820" BorderBrush="#55A66BFF" BorderThickness="1" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">

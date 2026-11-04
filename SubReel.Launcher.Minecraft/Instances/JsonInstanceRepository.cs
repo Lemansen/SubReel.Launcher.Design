@@ -201,6 +201,7 @@ public sealed class JsonInstanceRepository : IInstanceRepository
             JavaPath = file.JavaPath,
             CreatedUtc = file.CreatedUtc,
             LastPlayedUtc = file.LastPlayedUtc,
+            PlayTimeSeconds = Math.Max(0, file.PlayTimeSeconds),
         };
     }
 
@@ -217,6 +218,7 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         JavaPath = instance.JavaPath,
         CreatedUtc = instance.CreatedUtc,
         LastPlayedUtc = instance.LastPlayedUtc,
+        PlayTimeSeconds = instance.PlayTimeSeconds,
     };
 
     private string InstanceDirectory(string id) => Path.Combine(_paths.InstancesDirectory, id);

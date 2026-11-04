@@ -22,6 +22,7 @@ public sealed class BuildsViewModel : ObservableObject
     private readonly ILoaderCatalog _loaders;
     private readonly IToastService _toast;
     private readonly IModpackImporter _importer;
+    private readonly ICurseForgeImporter _curseForgeImporter;
     private readonly IDialogService _dialogs;
     private readonly ILogger<BuildsViewModel> _logger;
     private CancellationTokenSource? _importCts;
@@ -43,9 +44,10 @@ public sealed class BuildsViewModel : ObservableObject
     private string _buildsNote = "";
 
     public BuildsViewModel(NavigationService nav, InstanceService instances, VersionStore versions, ILoaderCatalog loaders,
-        IToastService toast, IModpackImporter importer, IDialogService dialogs, ILogger<BuildsViewModel> logger)
+        IToastService toast, IModpackImporter importer, ICurseForgeImporter curseForgeImporter, IDialogService dialogs, ILogger<BuildsViewModel> logger)
     {
         _importer = importer;
+        _curseForgeImporter = curseForgeImporter;
         _dialogs = dialogs;
         _nav = nav;
         _instances = instances;
@@ -163,7 +165,7 @@ public sealed class BuildsViewModel : ObservableObject
     public ICommand ImportCommand { get; }
     public ICommand CancelImportCommand { get; }
 
-    // ───────────────────────── Импорт из файла (.mrpack) ─────────────────────────
+    // ───────────────────────── Импорт из файла (.mrpack, .zip CurseForge) ─────────────────────────
 
     public bool IsImporting { get => _isImporting; private set { if (SetProperty(ref _isImporting, value)) OnPropertyChanged(nameof(IsImportCardVisible)); } }
     public double ImportProgress { get => _importProgress; private set => SetProperty(ref _importProgress, value); }
@@ -206,7 +208,10 @@ public sealed class BuildsViewModel : ObservableObject
                 };
             });
 
-            var result = await _importer.ImportMrpackAsync(path, progress, cts.Token).ConfigureAwait(true);
+            // .zip — сборка CurseForge (manifest.json), остальное — Modrinth (.mrpack).
+            var result = path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                ? await _curseForgeImporter.ImportAsync(path, progress, cts.Token).ConfigureAwait(true)
+                : await _importer.ImportMrpackAsync(path, progress, cts.Token).ConfigureAwait(true);
             if (!result.Succeeded)
             {
                 ImportError = result.Error ?? "Не удалось импортировать сборку.";

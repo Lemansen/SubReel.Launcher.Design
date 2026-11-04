@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using SubReel.Launcher.Application.Games;
 
 namespace SubReel.Launcher.Design.ViewModels;
 
@@ -10,6 +11,7 @@ namespace SubReel.Launcher.Design.ViewModels;
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly VersionStore _store;
+    private readonly IVersionMetadataProvider _metadata;
     private readonly IImageService _images;
     private readonly IOverlayFactory _overlays;
     private readonly ILogger<MainViewModel> _logger;
@@ -25,8 +27,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(
         NavigationService nav, VersionStore store, ProfileViewModel profile, HomeViewModel home, LaunchViewModel launch,
         VersionsViewModel versions, VersionDropdownViewModel versionDropdown, NewsViewModel news, BuildsViewModel builds, HubViewModel hub,
-        ToastViewModel toast, IImageService images, IOverlayFactory overlays, INetworkMonitor network, ILogger<MainViewModel> logger)
+        ToastViewModel toast, UpdateViewModel update, IImageService images, IOverlayFactory overlays, INetworkMonitor network, IVersionMetadataProvider metadata,
+        ILogger<MainViewModel> logger)
     {
+        _metadata = metadata;
         _network = network;
         network.Restored += OnNetworkRestored;
         Nav = nav;
@@ -40,6 +44,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Builds = builds;
         Hub = hub;
         Toast = toast;
+        Update = update;
         _images = images;
         _overlays = overlays;
         _logger = logger;
@@ -63,10 +68,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         SignInMicrosoftCommand = new RelayCommand(SignInMicrosoft);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         OpenBuildsCommand = new RelayCommand(() => nav.OpenBuilds());
+        OpenModsCommand = new RelayCommand(OpenMods);
         CloseOverlayCommand = new RelayCommand(nav.CloseOverlay);
     }
 
     public NavigationService Nav { get; }
+    public UpdateViewModel Update { get; }
     public ProfileViewModel Profile { get; }
     public HomeViewModel Home { get; }
     public LaunchViewModel Launch { get; }
@@ -92,6 +99,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand SignInMicrosoftCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand OpenBuildsCommand { get; }
+    public ICommand OpenModsCommand { get; }
     public ICommand CloseOverlayCommand { get; }
 
     private void OpenAccount()
@@ -112,6 +120,25 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Nav.ShowOverlay(_overlays.CreateMicrosoftSignIn());
     }
 
+    /// <summary>Моды выбранной сборки. Для обычной версии и ванили объясняем, что нужна сборка с загрузчиком.</summary>
+    private void OpenMods()
+    {
+        var build = _store.SelectedInstance;
+        if (build is null)
+        {
+            Toast.Show("Моды ставятся в сборку: создай сборку с загрузчиком и выбери её.", 3800);
+            return;
+        }
+        if (!ModsOverlayViewModel.Supports(build.Loader))
+        {
+            Toast.Show("У ванильной сборки нет модов. Создай сборку с Fabric, Quilt, Forge или NeoForge.", 3800);
+            return;
+        }
+
+        Nav.CloseVersionDropdown();
+        Nav.ShowOverlay(_overlays.CreateMods(build));
+    }
+
     private void OpenSettings()
     {
         Nav.CloseProfileMenu();
@@ -129,6 +156,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             // Пока идёт приветствие, тихо докачиваем остальные картинки (в т.ч. свои у отдельных версий) в кэш.
             PrefetchImagesAsync(_lifetime.Token).FireAndForget(_logger, "предзагрузка картинок версий");
+            PrefetchMetadataAsync(_lifetime.Token).FireAndForget(_logger, "предзагрузка описаний версий");
         }
         catch (OperationCanceledException)
         {
@@ -142,7 +170,37 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         // Если сети не было, данные догрузятся сами, как только она появится: без перезапуска лаунчера.
         _initialized = true;
+        Update.RunPeriodicChecksAsync(_lifetime.Token).FireAndForget(_logger, "проверка обновлений лаунчера");
         PollRecoveryAsync(_lifetime.Token).FireAndForget(_logger, "догрузка данных при появлении сети");
+    }
+
+    /// <summary>
+    /// Фоном скачивает небольшие описания выбранной и самой новой версии (если их ещё нет на диске): первая установка начнётся без паузы на их загрузку.
+    /// Файлы игры не качаются. Ошибки сети молча пропускаются: описание скачается при установке.
+    /// </summary>
+    private async Task PrefetchMetadataAsync(CancellationToken ct)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(8), ct); // сначала даём окну спокойно открыться
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable()) return;
+
+        foreach (var id in new[] { _store.SelectedVersion, _store.Catalog.LatestRelease }.Where(id => !string.IsNullOrEmpty(id)).Distinct())
+        {
+            try
+            {
+                await _metadata.ResolveAsync(id, allowNetwork: false, ct); // уже на диске
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                try
+                {
+                    await _metadata.ResolveAsync(id, allowNetwork: true, ct);
+                }
+                catch (Exception inner) when (inner is not OperationCanceledException)
+                {
+                    _logger.LogDebug(inner, "Описание версии {Id} не загружено заранее.", id);
+                }
+            }
+        }
     }
 
     // ───────────────────────── Восстановление после отсутствия сети ─────────────────────────
